@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Paiements - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>📱 Gestion des paiements</h2>
+            <p class="text-muted">Suivi des paiements par carte virtuelle</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6>Total paiements</h6>
+                    <h2 id="totalPayments">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Paiements réussis</h6>
+                    <h2 id="successfulPayments">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>En attente</h6>
+                    <h2 id="pendingPayments">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body">
+                    <h6>Montant total</h6>
+                    <h2 id="totalAmount">0 USD</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔍 Filtres</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <input type="text" class="form-control" id="filterUser" placeholder="Utilisateur">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Tous les statuts</option>
+                        <option value="completed">Complété</option>
+                        <option value="pending">En attente</option>
+                        <option value="failed">Échoué</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="date" class="form-control" id="filterDate">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">🔍 Filtrer</button>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button class="btn btn-secondary w-100" onclick="resetFilters()">🗑️ Réinitialiser</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des paiements -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">💳 Historique des paiements</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Utilisateur</th>
+                            <th>Carte</th>
+                            <th>Commerçant</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentsTableBody">
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.id }}</td>
+                            <td>
+                                <strong>{{ payment.user.first_name }} {{ payment.user.last_name }}</strong><br>
+                                <small>{{ payment.user.email }}</small>
+                            </td>
+                            <td>{{ payment.card.card_last4 if payment.card else 'N/A' }}</td>
+                            <td>{{ payment.merchant }}</td>
+                            <td><strong>{{ "{:,.2f}".format(payment.amount) }} {{ payment.currency }}</strong></td>
+                            <td>
+                                {% if payment.status == 'completed' %}
+                                    <span class="badge bg-success">Complété</span>
+                                {% elif payment.status == 'pending' %}
+                                    <span class="badge bg-warning">En attente</span>
+                                {% elif payment.status == 'failed' %}
+                                    <span class="badge bg-danger">Échoué</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ payment.status }}</span>
+                                {% endif %}
+                             </td>
+                            <td>{{ payment.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewPayment({{ payment.id }})">
+                                    👁️ Détails
+                                </button>
+                             </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">📭 Aucun paiement trouvé</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails paiement -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">💳 Détails du paiement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="paymentModalBody">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-danger" onclick="refundPayment()">↩️ Rembourser</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allPayments = {{ payments|tojson }};
+let currentPaymentId = null;
+
+function displayPayments(payments) {
+    const tbody = document.getElementById('paymentsTableBody');
+
+    if (payments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">📭 Aucun paiement trouvé</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = payments.map(p => `
+        <tr>
+            <td>${p.id}</td>
+            <td>
+                <strong>${p.user.first_name} ${p.user.last_name}</strong><br>
+                <small>${p.user.email}</small>
+            </td>
+            <td>${p.card ? p.card.card_last4 : 'N/A'}</td>
+            <td>${p.merchant}</td>
+            <td><strong>${p.amount.toLocaleString()} ${p.currency}</strong></td>
+            <td>${getStatusBadge(p.status)}</td>
+            <td><small>${new Date(p.created_at).toLocaleString('fr-FR')}</small></td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="viewPayment(${p.id})">👁️ Détails</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'completed': '<span class="badge bg-success">Complété</span>',
+        'pending': '<span class="badge bg-warning">En attente</span>',
+        'failed': '<span class="badge bg-danger">Échoué</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+}
+
+function applyFilters() {
+    const user = document.getElementById('filterUser').value.toLowerCase();
+    const status = document.getElementById('filterStatus').value;
+    const date = document.getElementById('filterDate').value;
+
+    let filtered = allPayments;
+
+    if (user) {
+        filtered = filtered.filter(p =>
+            `${p.user.first_name} ${p.user.last_name} ${p.user.email}`.toLowerCase().includes(user)
+        );
+    }
+
+    if (status) {
+        filtered = filtered.filter(p => p.status === status);
+    }
+
+    if (date) {
+        filtered = filtered.filter(p => p.created_at.split('T')[0] === date);
+    }
+
+    displayPayments(filtered);
+}
+
+function resetFilters() {
+    document.getElementById('filterUser').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterDate').value = '';
+    displayPayments(allPayments);
+}
+
+async function viewPayment(id) {
+    currentPaymentId = id;
+    const payment = allPayments.find(p => p.id === id);
+
+    document.getElementById('paymentModalBody').innerHTML = `
+        <div class="mb-2"><strong>ID:</strong> ${payment.id}</div>
+        <div class="mb-2"><strong>Utilisateur:</strong> ${payment.user.first_name} ${payment.user.last_name}</div>
+        <div class="mb-2"><strong>Email:</strong> ${payment.user.email}</div>
+        <div class="mb-2"><strong>Carte:</strong> **** **** **** ${payment.card?.card_last4 || 'N/A'}</div>
+        <div class="mb-2"><strong>Commerçant:</strong> ${payment.merchant}</div>
+        <div class="mb-2"><strong>Montant:</strong> ${payment.amount.toLocaleString()} ${payment.currency}</div>
+        <div class="mb-2"><strong>Description:</strong> ${payment.description || 'Aucune'}</div>
+        <div class="mb-2"><strong>Statut:</strong> ${payment.status}</div>
+        <div class="mb-2"><strong>Date:</strong> ${new Date(payment.created_at).toLocaleString('fr-FR')}</div>
+        ${payment.stripe_payment_intent ? `<div class="mb-2"><strong>Stripe Intent:</strong> <code>${payment.stripe_payment_intent}</code></div>` : ''}
+    `;
+
+    new bootstrap.Modal(document.getElementById('paymentModal')).show();
+}
+
+async function refundPayment() {
+    if (confirm('Rembourser ce paiement ?')) {
+        const response = await fetch(`/api/admin/payments/${currentPaymentId}/refund`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Remboursement effectué');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+// Calculer les stats
+function updateStats() {
+    document.getElementById('totalPayments').innerText = allPayments.length;
+    document.getElementById('successfulPayments').innerText = allPayments.filter(p => p.status === 'completed').length;
+    document.getElementById('pendingPayments').innerText = allPayments.filter(p => p.status === 'pending').length;
+    const total = allPayments.reduce((sum, p) => sum + (p.status === 'completed' ? p.amount : 0), 0);
+    document.getElementById('totalAmount').innerText = total.toLocaleString() + ' USD';
+}
+
+updateStats();
+</script>
+{% endblock %}

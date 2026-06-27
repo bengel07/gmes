@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0"><i class="fas fa-user-plus me-2"></i>Créer un compte</h4>
+                </div>
+                <div class="card-body">
+                    <div id="alertMessage" class="alert d-none"></div>
+
+                    <form id="registerForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">Prénom</label>
+                                <input type="text" class="form-control" id="first_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Nom</label>
+                                <input type="text" class="form-control" id="last_name" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Téléphone (509XXXXXXXX)</label>
+                            <input type="tel" class="form-control" id="phone" placeholder="50912345678" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mot de passe</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirmer le mot de passe</label>
+                            <input type="password" class="form-control" id="confirm_password" required>
+                        </div>
+
+                        <!-- Dans la page inscription, ajouter une option -->
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="want_to_be_agent">
+
+
+                            <label class="form-check-label">
+                                Je souhaite devenir agent GmesPay
+                            </label>
+                        </div>
+                         <!-- Section Agent (cachée par défaut) -->
+                        <div id="agentSection" style="display: none;">
+                            <div class="card bg-light p-3 mb-3">
+                                <h5 class="mb-3">📋 Informations Agent</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">Nom de l'entreprise *</label>
+                                    <input type="text" class="form-control" id="business_name">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Adresse de l'entreprise *</label>
+                                    <input type="text" class="form-control" id="business_address">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Numéro de patente / RNE *</label>
+                                    <input type="text" class="form-control" id="business_license">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Capital initial (HTG) *</label>
+                                    <input type="number" class="form-control" id="initial_capital" min="50000" step="1000">
+                                    <small class="text-muted">Minimum 50 000 HTG</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-user-plus me-2"></i>S'inscrire
+                        </button>
+
+                    </form>
+
+                    <hr>
+                    <p class="text-center mb-0">
+                        Déjà inscrit ? <a href="{{ url_for('login') }}">Se connecter</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    // Afficher/masquer le formulaire agent
+document.getElementById('want_to_be_agent').addEventListener('change', function() {
+    const agentSection = document.getElementById('agentSection');
+    if (this.checked) {
+        agentSection.style.display = 'block';
+    } else {
+        agentSection.style.display = 'none';
+    }
+});
+
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm_password').value;
+
+    if (password !== confirm) {
+        showAlert('Les mots de passe ne correspondent pas', 'danger');
+        return;
+    }
+
+    const data = {
+        first_name: document.getElementById('first_name').value,
+        last_name: document.getElementById('last_name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        password: password,
+        want_agent: document.getElementById('want_to_be_agent').checked
+    };
+
+    // Ajouter les données agent si coché
+    if (data.want_agent) {
+        data.business_name = document.getElementById('business_name').value;
+        data.business_address = document.getElementById('business_address').value;
+        data.business_license = document.getElementById('business_license').value;
+        data.initial_capital = document.getElementById('initial_capital').value;
+    }
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/auth/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+
+            if (data.want_agent) {
+                showAlert(
+                    "Compte créé ! Votre demande d'agent a été envoyée. Un administrateur vous contactera.",
+                    "success"
+                );
+            } else {
+                showAlert(
+                    "Compte créé avec succès ! Redirection...",
+                    "success"
+                );
+            }
+
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+
+        } else {
+            showAlert(result.error || 'Erreur lors de l\'inscription', 'danger');
+        }
+
+    } catch (error) {
+        console.error(error);
+        showAlert("Erreur réseau", "danger");
+    }
+
+});
+
+function showAlert(message, type) {
+    const alertDiv = document.getElementById('alertMessage');
+    alertDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+    alertDiv.classList.add(`alert-${type}`);
+    alertDiv.textContent = message;
+}
+</script>
+{% endblock %}

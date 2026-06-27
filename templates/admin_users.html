@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+
+{% block title %}Utilisateurs - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>👥 Gestion des utilisateurs</h2>
+            <p class="text-muted">Liste complète des utilisateurs de la plateforme</p>
+        </div>
+        <div>
+            <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+                ← Retour
+            </button>
+            <button class="btn btn-primary" onclick="window.location.href='/admin/users/add'">
+                ➕ Ajouter un utilisateur
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6>Total utilisateurs</h6>
+                    <h2 id="totalUsers">{{ users|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Vérifiés</h6>
+                    <h2 id="verifiedUsers">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>Agents</h6>
+                    <h2 id="agentUsers">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body">
+                    <h6>Administrateurs</h6>
+                    <h2 id="adminUsers">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔍 Filtres</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <input type="text" class="form-control" id="filterName" placeholder="Nom ou prénom">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="email" class="form-control" id="filterEmail" placeholder="Email">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <select class="form-select" id="filterRole">
+                        <option value="">Tous les rôles</option>
+                        <option value="user">Utilisateur</option>
+                        <option value="agent">Agent</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Tous</option>
+                        <option value="verified">Vérifié</option>
+                        <option value="unverified">Non vérifié</option>
+                        <option value="active">Actif</option>
+                        <option value="inactive">Inactif</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">🔍 Filtrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des utilisateurs -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">👥 Liste des utilisateurs</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom complet</th>
+                            <th>Email</th>
+                            <th>Téléphone</th>
+                            <th>Rôle</th>
+                            <th>Statut</th>
+                            <th>Date d'inscription</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>
+                                <strong>{{ user.name }}</strong>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.phone or '-' }}</td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge bg-danger">Admin</span>
+                                {% elif user.is_agent %}
+                                    <span class="badge bg-warning">Agent</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Utilisateur</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_verified %}
+                                    <span class="badge bg-success">Vérifié</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Non vérifié</span>
+                                {% endif %}
+                             </td>
+                            <td><small>{{ user.created_at }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewUser({{ user.id }})">
+                                    👁️
+                                </button>
+                                <button class="btn btn-sm btn-warning" onclick="editUser({{ user.id }})">
+                                    ✏️
+                                </button>
+                                <button class="btn btn-sm btn-primary"
+                                        onclick="resendWelcomeEmail({{ user.id }})">
+                                    📧
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">
+                                    🗑️
+                                </button>
+                             </td>
+                         </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">📭 Aucun utilisateur trouvé</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Voir utilisateur -->
+<div class="modal fade" id="viewUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">👤 Détails de l'utilisateur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="viewUserBody">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifier utilisateur -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">✏️ Modifier l'utilisateur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Prénom</label>
+                            <input type="text" class="form-control" id="editFirstName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nom</label>
+                            <input type="text" class="form-control" id="editLastName" required>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="editEmail" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Téléphone</label>
+                        <input type="text" class="form-control" id="editPhone">
+                    </div>
+                    <div class="mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsVerified">
+                            <label class="form-check-label">Vérifié</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsActive">
+                            <label class="form-check-label">Actif</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsAdmin">
+                            <label class="form-check-label">Administrateur</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsAgent">
+                            <label class="form-check-label">Agent</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveUserEdit()">💾 Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allUsers = {{ users|tojson }};
+
+function displayUsers(users) {
+    const tbody = document.getElementById('usersTableBody');
+
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">📭 Aucun utilisateur trouvé</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td>${u.id}</td>
+            <td><strong>${u.name}</strong></td>
+            <td>${u.email}</td>
+            <td>${u.phone || '-'}</td>
+            <td>${getRoleBadge(u)}</td>
+            <td>${getStatusBadge(u)}</td>
+            <td><small>${u.created_at}</small></td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="viewUser(${u.id})">👁️</button>
+                <button class="btn btn-sm btn-warning" onclick="editUser(${u.id})">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">🗑️</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function getRoleBadge(user) {
+    if (user.is_admin) return '<span class="badge bg-danger">Admin</span>';
+    if (user.is_agent) return '<span class="badge bg-warning">Agent</span>';
+    return '<span class="badge bg-secondary">Utilisateur</span>';
+}
+
+function getStatusBadge(user) {
+    if (user.is_verified) {
+        return '<span class="badge bg-success">Vérifié</span>';
+    }
+    return '<span class="badge bg-warning">Non vérifié</span>';
+}
+
+function applyFilters() {
+    const name = document.getElementById('filterName').value.toLowerCase();
+    const email = document.getElementById('filterEmail').value.toLowerCase();
+    const role = document.getElementById('filterRole').value;
+    const status = document.getElementById('filterStatus').value;
+
+    let filtered = allUsers;
+
+    if (name) {
+        filtered = filtered.filter(u => u.name.toLowerCase().includes(name));
+    }
+    if (email) {
+        filtered = filtered.filter(u => u.email.toLowerCase().includes(email));
+    }
+    if (role === 'admin') {
+        filtered = filtered.filter(u => u.is_admin);
+    } else if (role === 'agent') {
+        filtered = filtered.filter(u => u.is_agent && !u.is_admin);
+    } else if (role === 'user') {
+        filtered = filtered.filter(u => !u.is_admin && !u.is_agent);
+    }
+    if (status === 'verified') {
+        filtered = filtered.filter(u => u.is_verified);
+    } else if (status === 'unverified') {
+        filtered = filtered.filter(u => !u.is_verified);
+    }
+
+    displayUsers(filtered);
+}
+
+function viewUser(id) {
+    const user = allUsers.find(u => u.id === id);
+
+    // Formater la date
+    let createdDate = 'Non disponible';
+    if (user.created_at) {
+        const date = new Date(user.created_at);
+        if (!isNaN(date.getTime())) {
+            createdDate = date.toLocaleString('fr-FR');
+        }
+    }
+
+    document.getElementById('viewUserBody').innerHTML = `
+        <div><strong>ID:</strong> ${user.id}</div>
+        <div><strong>Nom:</strong> ${user.name}</div>
+        <div><strong>Email:</strong> ${user.email}</div>
+        <div><strong>Téléphone:</strong> ${user.phone || 'N/A'}</div>
+        <div><strong>Rôle:</strong> ${user.is_admin ? 'Admin' : (user.is_agent ? 'Agent' : 'Utilisateur')}</div>
+        <div><strong>Vérifié:</strong> ${user.is_verified ? 'Oui' : 'Non'}</div>
+        <div><strong>Actif:</strong> ${user.is_active !== undefined ? (user.is_active ? 'Oui' : 'Non') : 'Oui'}</div>
+        <div><strong>Date inscription:</strong> ${createdDate}</div>
+    `;
+
+    new bootstrap.Modal(document.getElementById('viewUserModal')).show();
+}
+
+
+async function deleteUser(id) {
+    if (confirm('Supprimer cet utilisateur ?')) {
+        const response = await fetch(`/api/admin/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert('Utilisateur supprimé');
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.message);
+        }
+    }
+}
+
+async function resendWelcomeEmail(userId) {
+
+    if (!confirm("Renvoyer l'email de bienvenue ?")) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            `/api/admin/users/${userId}/resend-email`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization':
+                        `Bearer ${localStorage.getItem('token')}`
+                }
+            }
+        );
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert("✅ Email renvoyé");
+        } else {
+            alert("❌ " + result.message);
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("❌ Erreur réseau");
+    }
+}
+
+function updateStats() {
+    document.getElementById('verifiedUsers').innerText = allUsers.filter(u => u.is_verified).length;
+    document.getElementById('agentUsers').innerText = allUsers.filter(u => u.is_agent).length;
+    document.getElementById('adminUsers').innerText = allUsers.filter(u => u.is_admin).length;
+}
+
+// Variable globale pour stocker l'utilisateur en cours d'édition
+let currentEditUserId = null;
+
+// Fonction pour éditer un utilisateur
+function editUser(userId) {
+    currentEditUserId = userId;
+
+    // Chercher l'utilisateur dans la liste
+    const user = allUsers.find(u => u.id === userId);
+
+    if (!user) {
+        alert('Utilisateur non trouvé');
+        return;
+    }
+
+    // Remplir le formulaire
+    const nameParts = user.name.split(' ');
+    document.getElementById('editFirstName').value = nameParts[0] || '';
+    document.getElementById('editLastName').value = nameParts.slice(1).join(' ') || '';
+    document.getElementById('editEmail').value = user.email;
+    document.getElementById('editPhone').value = user.phone || '';
+    document.getElementById('editIsVerified').checked = user.is_verified;
+    document.getElementById('editIsActive').checked = user.is_active !== false;
+    document.getElementById('editIsAdmin').checked = user.is_admin || false;
+    document.getElementById('editIsAgent').checked = user.is_agent || false;
+
+    // Afficher le modal
+    new bootstrap.Modal(document.getElementById('editUserModal')).show();
+}
+
+// Fonction pour sauvegarder les modifications
+async function saveUserEdit() {
+    const data = {
+        first_name: document.getElementById('editFirstName').value,
+        last_name: document.getElementById('editLastName').value,
+        email: document.getElementById('editEmail').value,
+        phone: document.getElementById('editPhone').value,
+        is_verified: document.getElementById('editIsVerified').checked,
+        is_active: document.getElementById('editIsActive').checked,
+        is_admin: document.getElementById('editIsAdmin').checked,
+        is_agent: document.getElementById('editIsAgent').checked
+    };
+
+    try {
+        const response = await fetch(`/api/admin/users/${currentEditUserId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ Utilisateur modifié avec succès');
+            location.reload();
+        } else {
+            alert('❌ Erreur: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('❌ Erreur réseau');
+    }
+}
+
+updateStats();
+</script>
+{% endblock %}

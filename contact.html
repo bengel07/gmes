@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Contact - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">📞 Contactez-nous</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informations de contact -->
+                        <div class="col-md-5">
+                            <h5><i class="bi bi-geo-alt-fill"></i> 📍 Adresse</h5>
+                            <p class="text-muted">Port-au-Prince, Haïti<br>Rue Louverture, Immeuble GmesPay</p>
+
+                            <h5 class="mt-4"><i class="bi bi-envelope-fill"></i> 📧 Email</h5>
+                            <p class="text-muted">contact@gmespay.com<br>support@gmespay.com</p>
+
+                            <h5 class="mt-4"><i class="bi bi-telephone-fill"></i> 📞 Téléphone</h5>
+                            <p class="text-muted">+509 47 035 633<br>+509 36 123 456</p>
+
+                            <h5 class="mt-4"><i class="bi bi-clock-fill"></i> ⏰ Horaires</h5>
+                            <p class="text-muted">
+                                Lundi - Vendredi: 8h00 - 17h00<br>
+                                Samedi: 9h00 - 13h00<br>
+                                Dimanche: Fermé
+                            </p>
+
+                            <hr>
+
+                            <h5><i class="bi bi-share-fill"></i> 📱 Suivez-nous</h5>
+                            <div class="mt-2">
+                                <a href="#" class="btn btn-outline-primary btn-sm me-2">
+                                    📘 Facebook
+                                </a>
+                                <a href="#" class="btn btn-outline-info btn-sm me-2">
+                                    🐦 Twitter
+                                </a>
+                                <a href="#" class="btn btn-outline-danger btn-sm">
+                                    📷 Instagram
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Formulaire de contact -->
+                        <div class="col-md-7">
+                            <h5>✉️ Envoyez-nous un message</h5>
+                            <form id="contactForm">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nom complet *</label>
+                                        <input type="text" class="form-control" id="name" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Email *</label>
+                                        <input type="email" class="form-control" id="email" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Téléphone</label>
+                                    <input type="tel" class="form-control" id="phone">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Sujet *</label>
+                                    <select class="form-select" id="subject" required>
+                                        <option value="">Sélectionner un sujet</option>
+                                        <option value="support">💻 Support technique</option>
+                                        <option value="compte">🔐 Problème de compte</option>
+                                        <option value="transaction">💰 Transaction</option>
+                                        <option value="partenariat">🤝 Partenariat</option>
+                                        <option value="reclamation">⚠️ Réclamation</option>
+                                        <option value="autre">📝 Autre</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Message *</label>
+                                    <textarea class="form-control" id="message" rows="5" required></textarea>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100">
+                                    📤 Envoyer le message
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message de succès -->
+            <div id="successMessage" class="alert alert-success mt-4" style="display: none;">
+                ✅ Message envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.
+            </div>
+            <div id="errorMessage" class="alert alert-danger mt-4" style="display: none;">
+                ❌ Erreur lors de l'envoi du message. Veuillez réessayer plus tard.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('contactForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        subject: document.getElementById('subject').value,
+        message: document.getElementById('message').value
+    };
+
+    try {
+        const token = localStorage.getItem('token');
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch('/api/contact', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            document.getElementById('successMessage').style.display = 'block';
+            document.getElementById('contactForm').reset();
+            setTimeout(() => {
+                document.getElementById('successMessage').style.display = 'none';
+            }, 5000);
+        } else {
+            document.getElementById('errorMessage').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('errorMessage').style.display = 'none';
+            }, 5000);
+        }
+    } catch (error) {
+        console.error('Erreur:', error);
+        document.getElementById('errorMessage').style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('errorMessage').style.display = 'none';
+        }, 5000);
+    }
+});
+</script>
+{% endblock %}

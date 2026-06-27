@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord - GmesPay{% endblock %}
+
+{% block content %}
+
+<script>
+const token = localStorage.getItem("token");
+
+if (!token) {
+    window.location.href = "/login";
+}
+</script>
+
+<div class="container-fluid px-4">
+    <!-- HEADER avec Menu Principal -->
+    <div class="row">
+        <!-- Sidebar - Menu Principal -->
+        <div class="col-md-3 col-lg-2 px-0 bg-dark vh-100 position-fixed start-0 top-0">
+            <div class="p-3">
+                <h4 class="text-white mb-4">GmesPay</h4>
+                <hr class="bg-secondary">
+                <nav class="nav flex-column">
+                    <a href="#" class="nav-link text-white py-2 active bg-primary rounded">
+                        📊 Tableau de bord
+                    </a>
+                   <a href="{{ url_for('admin_partners_page') }}" class="nav-link text-secondary py-2">👥 Ajouter_Partner</a>
+                    <a href="{{ url_for('admin_login') }}" class="nav-link text-secondary py-2">👥 Login_P</a>
+                    <a href="{{ url_for('admin_users') }}" class="nav-link text-secondary py-2">👥 Utilisateurs</a>
+                    <a href="{{ url_for('admin_agents') }}" class="nav-link text-secondary py-2">👤 Agents</a>
+                    <a href="{{ url_for('admin_wallets') }}" class="nav-link text-secondary py-2">💼 Portefeuilles</a>
+                    <a href="{{ url_for('admin_transactions') }}" class="nav-link text-secondary py-2">🔄 Transactions</a>
+                    <a href="{{ url_for('admin_deposits_approve') }}" class="nav-link text-secondary py-2">💰 Dépôts</a>
+                    <a href="{{ url_for('admin_withdrawals_approve') }}" class="nav-link text-secondary py-2">🏧 Retraits</a>
+                    <a href="{{ url_for('admin_transfer_new') }}" class="nav-link text-secondary py-2">✈️ Transferts</a>
+                    <a href="{{ url_for('admin_virtual_cards') }}" class="nav-link text-secondary py-2">💳 Cartes virtuelles</a>
+                    <a href="{{ url_for('admin_payments') }}" class="nav-link text-secondary py-2">📱 Paiements</a>
+                    <a href="{{ url_for('admin_kyc') }}" class="nav-link text-secondary py-2">✅ KYC / Vérifications</a>
+                    <a href="{{ url_for('admin_disputes') }}" class="nav-link text-secondary py-2">⚠️ Litiges</a>
+                    <a href="{{ url_for('admin_audit_logs') }}" class="nav-link text-secondary py-2">📝 Audit Logs</a>
+                    <a href="{{ url_for('admin_settings') }}" class="nav-link text-secondary py-2">⚙️ Paramètres</a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10 ms-auto px-4">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center py-4 border-bottom mb-4">
+                <h2 class="h3 mb-0">Tableau de bord</h2>
+                <p class="text-muted mb-0">Vue d'ensemble de la plateforme GmesPay</p>
+            </div>
+
+            <!-- Graphique des transactions -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Tableau des transactions</h5>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary">Volume des transactions</span>
+                                <small class="text-muted">300K - 50K</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary">30 derniers jours</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="transactionChart" height="100"></canvas>
+                    <div class="d-flex justify-content-between mt-3 text-muted small">
+                        <span>25 Avr</span>
+                        <span>29 Avr</span>
+                        <span>03 Mai</span>
+                        <span>07 Mai</span>
+                        <span>11 Mai</span>
+                        <span>15 Mai</span>
+                        <span>19 Mai</span>
+                        <span>23 Mai</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cartes de statistiques -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted">Volume total</span>
+                                <span class="text-success">+25.7%</span>
+                            </div>
+                            <h3 class="mb-0" id="totalVolume">0 HTG</h3>
+                            <small class="text-success">+15.2% ce mois</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card bg-primary text-white shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <span>💰 Volume transactions</span>
+                                        <span>📈</span>
+                                    </div>
+                                    <h4 id="transactionsCount">0</h4>
+                                    <small>transactions totales</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <span>👥 Utilisateurs actifs</span>
+                                        <span>👤</span>
+                                    </div>
+                                    <h4 id="usersCount">0</h4>
+                                    <small>membres inscrits</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-warning text-dark shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <span>⚠️ Alertes</span>
+                                        <span>🔔</span>
+                                    </div>
+                                    <h4 id="alertsCount">0</h4>
+                                    <small>nécessite attention</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions récentes -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Transactions récentes</h5>
+                    <a href="#" class="btn btn-sm btn-outline-primary">Voir tout →</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>UTILISATEUR</th>
+                                    <th>TYPE</th>
+                                    <th>MONTANT</th>
+                                    <th>STATUT</th>
+                                    <th>DATE</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTable">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">Chargement...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alertes importantes et Actions rapides -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">⚠️ Alertes importantes</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>💰 Dépôts en attente</span>
+                                    <span class="badge bg-warning" id="pendingDeposits">0</span>
+                                    <small class="text-muted">Nécessitant une vérification</small>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>🏧 Retraits en attente</span>
+                                    <span class="badge bg-warning" id="pendingWithdrawals">0</span>
+                                    <small class="text-muted">Nécessitant une approbation</small>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>⚠️ Utilisateurs signalés</span>
+                                    <span class="badge bg-danger" id="flaggedUsers">0</span>
+                                    <small class="text-muted">Nécessitant une revue</small>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>✅ KYC en attente</span>
+                                    <span class="badge bg-info" id="pendingKyc">0</span>
+                                    <small class="text-muted">Vérifications en attente</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">⚡ Actions rapides</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button class="btn btn-outline-primary w-100 btn-sm py-2" onclick="window.location.href='/admin/users/add'">
+                                        ➕ Ajouter un utilisateur
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-outline-success w-100 btn-sm py-2" onclick="window.location.href='/admin/transfer/new'">
+                                        💸 Nouveau transfert
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-outline-warning w-100 btn-sm py-2" onclick="window.location.href='/admin/deposits/approve'">
+                                        ✅ Approuver dépôt
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-outline-danger w-100 btn-sm py-2" onclick="window.location.href='/admin/withdrawals/approve'">
+                                        🏧 Approuver retrait
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-outline-info w-100 btn-sm py-2" onclick="window.location.href='/admin/kyc'">
+                                        🔍 Vérifier tous les utilisateurs
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-outline-dark w-100 btn-sm py-2" onclick="window.location.href='/admin/reports'">
+                                        📊 Rapport financier
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js pour le graphique -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+// Configuration du graphique
+const ctx = document.getElementById('transactionChart').getContext('2d');
+let transactionChart;
+
+async function initChart() {
+    const response = await fetch('/api/admin/chart-data', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await response.json();
+
+    transactionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Volume transactions (milliers HTG)',
+                data: data.volumes,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            }
+        }
+    });
+}
+
+initChart();
+
+async function loadAdminDashboard() {
+    try {
+        // Récupérer les utilisateurs
+        const usersRes = await fetch('/api/admin/users', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const users = await usersRes.json();
+        document.getElementById("usersCount").innerText = users?.length ?? 0;
+
+        // Récupérer les transactions
+        const txRes = await fetch('/api/admin/transactions', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const transactions = await txRes.json();
+        document.getElementById("transactionsCount").innerText = transactions?.length ?? 0;
+
+        // Calcul du volume total
+        let totalVolume = 0;
+        const transactionsTable = document.getElementById("transactionsTable");
+
+        if (transactions.length) {
+            transactionsTable.innerHTML = transactions.slice(0, 5).map(tx => {
+                totalVolume += parseFloat(tx.amount) || 0;
+
+                let statusBadge = '';
+                if (tx.status === 'completed' || tx.status === 'complété') {
+                    statusBadge = '<span class="badge bg-success">Complété</span>';
+                } else if (tx.status === 'pending' || tx.status === 'en attente') {
+                    statusBadge = '<span class="badge bg-warning">En attente</span>';
+                } else if (tx.status === 'failed') {
+                    statusBadge = '<span class="badge bg-danger">Échoué</span>';
+                } else {
+                    statusBadge = `<span class="badge bg-secondary">${tx.status || 'N/A'}</span>`;
+                }
+
+                return `
+                    <tr>
+                        <td><code>#TXN-${tx.id || tx.transaction_id || 'XXXXX'}</code></td>
+                        <td><strong>${tx.user_name || tx.user?.name || 'N/A'}</strong></td>
+                        <td><span class="badge bg-info">${tx.type || 'N/A'}</span></td>
+                        <td><strong>${parseFloat(tx.amount).toLocaleString()} ${tx.currency || 'HTG'}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td><small>${new Date(tx.created_at || tx.date).toLocaleDateString('fr-FR')} ${new Date(tx.created_at || tx.date).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}</small></td>
+                        <td><button class="btn btn-sm btn-outline-secondary">ℹ️</button></td>
+                    </tr>
+                `;
+            }).join("");
+        } else {
+            transactionsTable.innerHTML = '<tr><td colspan="7" class="text-center py-4">Aucune transaction</td></tr>';
+        }
+
+        document.getElementById("totalVolume").innerText = totalVolume.toLocaleString() + " HTG";
+
+
+        // Charger les alertes
+        await loadAlerts();
+
+    } catch (err) {
+        console.error("Admin Dashboard Error:", err);
+        document.getElementById("transactionsTable").innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Erreur de chargement</td></tr>';
+    }
+}
+
+async function loadAlerts() {
+    try {
+        const response = await fetch('/api/admin/alerts', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        const data = await response.json();
+
+        document.getElementById('pendingDeposits').innerText = data.pending_deposits || 0;
+        document.getElementById('pendingWithdrawals').innerText = data.pending_withdrawals || 0;
+        document.getElementById('flaggedUsers').innerText = data.flagged_users || 0;
+        document.getElementById('pendingKyc').innerText = data.pending_kyc || 0;
+
+    } catch (err) {
+        console.error('Erreur chargement alertes:', err);
+    }
+}
+
+// Appeler au chargement de la page
+loadAlerts();
+
+loadAdminDashboard();
+
+</script>
+
+<!-- CSS additions -->
+<style>
+    .nav-link:hover {
+        background-color: rgba(255,255,255,0.1);
+        transition: all 0.3s;
+    }
+
+    .nav-link.active {
+        background-color: #0d6efd !important;
+    }
+
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .card {
+        border: none;
+        border-radius: 10px;
+    }
+
+    .table th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+
+{% endblock %}

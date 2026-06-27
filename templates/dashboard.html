@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord - GmesPay{% endblock %}
+
+{% block content %}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <h2>Bonjour, <span id="userName">Utilisateur</span> !</h2>
+            <p class="text-muted">Bienvenue sur votre espace GmesPay</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h5 class="card-title">Solde HTG</h5>
+                    <h2 class="display-4" id="balanceHtg">0.00</h2>
+                    <small>Gourdes haïtiennes</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h5 class="card-title">Solde USD</h5>
+                    <h2 class="display-4" id="balanceUsd">0.00</h2>
+                    <small>Dollars américains</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
+                    <h5>Déposer</h5>
+                    <p>Ajoutez des fonds via MonCash</p>
+                    <a href="{{ url_for('wallet') }}" class="btn btn-outline-primary">Déposer</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-credit-card fa-3x text-primary mb-3"></i>
+                    <h5>Carte virtuelle</h5>
+                    <p>Obtenez votre carte</p>
+                    <a href="{{ url_for('cards') }}" class="btn btn-outline-primary">Créer</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-exchange-alt fa-3x text-primary mb-3"></i>
+                    <h5>Transfert</h5>
+                    <p>Envoyez à un ami</p>
+                    <a href="{{ url_for('transfer') }}" class="btn btn-outline-primary">Transférer</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Dernières transactions</h5>
+        </div>
+        <div class="card-body">
+            <div id="transactionsList">
+                <p class="text-muted text-center">Chargement...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+
+if (!token) {
+    window.location.href = "/login";
+}
+
+async function loadDashboard() {
+    try {
+        // Vérification token côté backend
+        const check = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!check.ok) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            window.location.href = "/login";
+            return;
+        }
+
+        // User
+        const user = JSON.parse(localStorage.getItem('user') || "{}");
+        document.getElementById('userName').innerText =
+            user.first_name || "Utilisateur";
+
+        // Balance
+        const balanceRes = await fetch('/api/wallet/balance', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const balance = await balanceRes.json();
+
+        document.getElementById('balanceHtg').innerText =
+            (balance.htg || 0).toLocaleString();
+
+        document.getElementById('balanceUsd').innerText =
+            (balance.usd || 0).toLocaleString();
+
+        // Transactions
+        const txRes = await fetch('/api/wallet/transactions?per_page=5', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const txData = await txRes.json();
+
+        const container = document.getElementById('transactionsList');
+
+        if (txData.transactions?.length > 0) {
+            container.innerHTML = txData.transactions.map(t => `
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <div>
+                        <strong>${t.type}</strong><br>
+                        <small class="text-muted">
+                            ${new Date(t.created_at).toLocaleString()}
+                        </small>
+                    </div>
+
+                    <div class="text-end">
+                        <span class="${t.type === 'deposit' ? 'text-success' : 'text-danger'}">
+                            ${t.type === 'deposit' ? '+' : '-'} ${t.amount} ${t.currency}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="text-muted text-center">Aucune transaction</p>';
+        }
+
+    } catch (error) {
+        console.error("Dashboard error:", error);
+    }
+}
+
+loadDashboard();
+</script>
+
+{% endblock %}

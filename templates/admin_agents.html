@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Agents - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>👤 Gestion des agents</h2>
+            <p class="text-muted">Suivi des agents et leurs commissions</p>
+        </div>
+        <div>
+            <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+                ← Retour
+            </button>
+            <button class="btn btn-primary" onclick="showAddAgentModal()">
+                ➕ Ajouter un agent
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6>Total agents</h6>
+                    <h2 id="totalAgents">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Agents actifs</h6>
+                    <h2 id="activeAgents">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>Commission totale</h6>
+                    <h2 id="totalCommission">0 HTG</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white shadow">
+                <div class="card-body">
+                    <h6>Dépôts cash</h6>
+                    <h2 id="totalCashDeposits">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des agents -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">👤 Liste des agents</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Agent</th>
+                            <th>Code agent</th>
+                            <th>Date inscription</th>
+                            <th>Entreprise</th>
+                            <th>Téléphone</th>
+                            <th>Commission</th>
+                            <th>Solde HTG</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agentsTableBody">
+                        {% for agent in agents %}
+                        <tr>
+                            <td>{{ agent.id }}</td>
+                            <td>
+                                <strong>{{ agent.first_name }} {{ agent.last_name }}</strong><br>
+                                <small>{{ agent.email }}</small>
+                            </td>
+                            <td><code>{{ agent.agent_code }}</code></td>
+                            <td>{% if agent.created_at %}{{ agent.created_at.strftime('%d/%m/%Y') }}{% else %}-{% endif %}</td>
+                            <td>{{ agent.business_name or '-' }}</td>
+                            <td>{{ agent.phone or agent.user.phone }}</td>
+                            <td>{{ agent.commission_rate }}%</td>
+                            <td><strong>{{ "{:,.2f}".format(agent.agent_balance ) }} HTG</strong></td>
+                            <td>
+                                {% if agent.is_active %}
+                                    <span class="badge bg-success">Actif</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inactif</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewAgent({{ agent.id }})">
+                                    👁️
+                                </button>
+                                <button class="btn btn-sm btn-warning" onclick="editAgent({{ agent.id }})">
+                                    ✏️
+                                </button>
+                                {% if agent.is_active %}
+                                <button class="btn btn-sm btn-danger" onclick="toggleAgent({{ agent.id }}, 'disable')">
+                                    🔒
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-success" onclick="toggleAgent({{ agent.id }}, 'enable')">
+                                    🔓
+                                </button>
+                                {% endif %}
+                             </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">📭 Aucun agent trouvé</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajouter/Modifier Agent -->
+<div class="modal fade" id="agentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="agentModalTitle">➕ Ajouter un agent</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="agentForm">
+                    <input type="hidden" id="agentId">
+                    <div class="mb-3">
+                        <label class="form-label">Utilisateur</label>
+                        <select class="form-select" id="userId" required>
+                            <option value="">Sélectionner un utilisateur</option>
+                            {% for user in users if not user.is_agent %}
+                            <option value="{{ user.id }}">
+                                {{ user.first_name }} {{ user.last_name }} - {{ user.email }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Code agent</label>
+                        <input type="text" class="form-control" id="agentCode" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nom de l'entreprise</label>
+                        <input type="text" class="form-control" id="businessName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Adresse</label>
+                        <textarea class="form-control" id="businessAddress" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Taux de commission (%)</label>
+                        <input type="number" class="form-control" id="commissionRate" step="0.1" value="1.0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveAgent()">💾 Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allAgents = {{ agents_json|tojson }};
+
+function displayAgents(agents) {
+    const tbody = document.getElementById('agentsTableBody');
+
+    if (agents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4">📭 Aucun agent trouvé</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = agents.map(a => `
+        <tr>
+            <td>${a.id}</td>
+            <td><strong>${a.user.first_name} ${a.user.last_name}</strong><br><small>${a.user.email}</small></td>
+            <td><code>${a.agent_code}</code></td>
+            <td>${a.business_name || '-'}</td>
+            <td>${a.phone || a.user.phone || '-'}</td>
+            <td>${a.commission_rate}%</td>
+            <td><strong>${a.balance_htg.toLocaleString()} HTG</strong></td>
+            <td>${a.is_active ? '<span class="badge bg-success">Actif</span>' : '<span class="badge bg-danger">Inactif</span>'}</td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="viewAgent(${a.id})">👁️</button>
+                <button class="btn btn-sm btn-warning" onclick="editAgent(${a.id})">✏️</button>
+                ${a.is_active ?
+                    '<button class="btn btn-sm btn-danger" onclick="toggleAgent(' + a.id + ', \'disable\')">🔒</button>' :
+                    '<button class="btn btn-sm btn-success" onclick="toggleAgent(' + a.id + ', \'enable\')">🔓</button>'}
+             </td>
+        </tr>
+    `).join('');
+}
+
+function showAddAgentModal() {
+    document.getElementById('agentModalTitle').innerText = '➕ Ajouter un agent';
+    document.getElementById('agentForm').reset();
+    document.getElementById('agentId').value = '';
+    new bootstrap.Modal(document.getElementById('agentModal')).show();
+}
+
+async function editAgent(id) {
+    const agent = allAgents.find(a => a.id === id);
+
+    document.getElementById('agentModalTitle').innerText = '✏️ Modifier l\'agent';
+    document.getElementById('agentId').value = agent.id;
+    document.getElementById('userId').value = agent.user_id;
+    document.getElementById('agentCode').value = agent.agent_code;
+    document.getElementById('businessName').value = agent.business_name || '';
+    document.getElementById('businessAddress').value = agent.business_address || '';
+    document.getElementById('commissionRate').value = agent.commission_rate;
+
+    new bootstrap.Modal(document.getElementById('agentModal')).show();
+}
+
+async function saveAgent() {
+    const id = document.getElementById('agentId').value;
+    const data = {
+        user_id: parseInt(document.getElementById('userId').value),
+        agent_code: document.getElementById('agentCode').value,
+        business_name: document.getElementById('businessName').value,
+        business_address: document.getElementById('businessAddress').value,
+        commission_rate: parseFloat(document.getElementById('commissionRate').value)
+    };
+
+    if (!data.user_id || !data.agent_code) {
+        alert('Veuillez remplir tous les champs obligatoires');
+        return;
+    }
+
+    const url = id ? `/api/admin/agents/${id}` : '/api/admin/agents';
+    const method = id ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        alert(id ? 'Agent modifié' : 'Agent ajouté');
+        location.reload();
+    } else {
+        alert('Erreur: ' + result.message);
+    }
+}
+
+async function toggleAgent(id, action) {
+    const text = action === 'disable' ? 'désactiver' : 'activer';
+    if (confirm(`Voulez-vous ${text} cet agent ?`)) {
+        const response = await fetch(`/api/admin/agents/${id}/${action}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const result = await response.json();
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Erreur: ' + result.message);
+        }
+    }
+}
+
+function viewAgent(id) {
+    const agent = allAgents.find(a => a.id === id);
+    alert(`
+Agent: ${agent.user.first_name} ${agent.user.last_name}
+Code: ${agent.agent_code}
+Entreprise: ${agent.business_name || 'N/A'}
+Commission: ${agent.commission_rate}%
+Solde: ${agent.balance_htg.toLocaleString()} HTG
+Statut: ${agent.is_active ? 'Actif' : 'Inactif'}
+    `);
+}
+
+function updateStats() {
+    document.getElementById('totalAgents').innerText = allAgents.length;
+    document.getElementById('activeAgents').innerText = allAgents.filter(a => a.is_active).length;
+    const totalComm = allAgents.reduce((sum, a) => sum + (a.balance_htg || 0), 0);
+    document.getElementById('totalCommission').innerText = totalComm.toLocaleString() + ' HTG';
+    document.getElementById('totalCashDeposits').innerText = '0'; // À implémenter
+}
+
+updateStats();
+</script>
+{% endblock %}

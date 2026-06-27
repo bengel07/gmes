@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Rapports financiers - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>📊 Rapports financiers</h2>
+    <p class="text-muted">Vue d'ensemble des finances GmesPay</p>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h6>Volume total</h6>
+                    <h3>{{ reports.total_volume|round(2) }} HTG</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h6>Transactions</h6>
+                    <h3>{{ reports.total_transactions }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6>Frais totaux</h6>
+                    <h3>{{ reports.total_fees }} USD</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning">
+                <div class="card-body">
+                    <h6>Croissance</h6>
+                    <h3>+{{ reports.monthly_growth }}%</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

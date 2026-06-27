@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Paramètres - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>⚙️ Paramètres</h2>
+            <p class="text-muted">Configuration de la plateforme GmesPay</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour
+        </button>
+    </div>
+
+    <div class="row">
+        <!-- Paramètres généraux -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📊 Paramètres généraux</h5>
+                </div>
+                <div class="card-body">
+                    <form id="generalSettingsForm">
+                        <div class="mb-3">
+                            <label class="form-label">Nom de la plateforme</label>
+                            <input type="text" class="form-control" id="platform_name" value="GmesPay">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Taux de change USD → HTG</label>
+                            <input type="number" class="form-control" id="exchange_rate" step="0.01" value="131.50">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Frais de transaction (%)</label>
+                            <input type="number" class="form-control" id="transaction_fee" step="0.1" value="1.5">
+                        </div>
+                        <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paramètres de sécurité -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">🔒 Sécurité</h5>
+                </div>
+                <div class="card-body">
+                    <form id="securitySettingsForm">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="two_factor_auth">
+                                <label class="form-check-label">Authentification à deux facteurs</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="email_notifications">
+                                <label class="form-check-label">Notifications par email</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Session timeout (minutes)</label>
+                            <input type="number" class="form-control" id="session_timeout" value="30">
+                        </div>
+                        <button type="submit" class="btn btn-success">💾 Enregistrer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Limites -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">📏 Limites</h5>
+                </div>
+                <div class="card-body">
+                    <form id="limitsForm">
+                        <div class="mb-3">
+                            <label class="form-label">Dépôt minimum (HTG)</label>
+                            <input type="number" class="form-control" id="min_deposit" value="100">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Dépôt maximum (HTG)</label>
+                            <input type="number" class="form-control" id="max_deposit" value="500000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Retrait maximum par jour (HTG)</label>
+                            <input type="number" class="form-control" id="daily_withdrawal_limit" value="100000">
+                        </div>
+                        <button type="submit" class="btn btn-warning">💾 Enregistrer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Administration -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">🛡️ Administration</h5>
+                </div>
+                <div class="card-body">
+                    <form id="adminForm">
+                        <div class="mb-3">
+                            <label class="form-label">Email administrateur principal</label>
+                            <input type="email" class="form-control" id="admin_email" value="admin@gmespay.com">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nouveau mot de passe admin</label>
+                            <input type="password" class="form-control" id="admin_password" placeholder="Laisser vide pour ne pas changer">
+                        </div>
+                        <button type="submit" class="btn btn-danger">💾 Mettre à jour</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔧 Maintenance</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <button class="btn btn-outline-danger w-100 mb-2" onclick="clearCache()">
+                        🗑️ Vider le cache
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <button class="btn btn-outline-warning w-100 mb-2" onclick="backupDatabase()">
+                        💾 Sauvegarder la base de données
+                    </button>
+                </div>
+                <div class="col-md-12">
+                    <button class="btn btn-outline-secondary w-100" onclick="generateReport()">
+                        📊 Générer rapport système
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Paramètres généraux
+document.getElementById('generalSettingsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        platform_name: document.getElementById('platform_name').value,
+        exchange_rate: document.getElementById('exchange_rate').value,
+        transaction_fee: document.getElementById('transaction_fee').value
+    };
+    const response = await fetch('/api/admin/settings/general', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify(data)
+    });
+    const result = await response.json();
+    alert(result.success ? 'Paramètres enregistrés' : 'Erreur: ' + result.message);
+});
+
+// Sécurité
+document.getElementById('securitySettingsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        two_factor_auth: document.getElementById('two_factor_auth').checked,
+        email_notifications: document.getElementById('email_notifications').checked,
+        session_timeout: document.getElementById('session_timeout').value
+    };
+    const response = await fetch('/api/admin/settings/security', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify(data)
+    });
+    const result = await response.json();
+    alert(result.success ? 'Paramètres enregistrés' : 'Erreur: ' + result.message);
+});
+
+// Limites
+document.getElementById('limitsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        min_deposit: document.getElementById('min_deposit').value,
+        max_deposit: document.getElementById('max_deposit').value,
+        daily_withdrawal_limit: document.getElementById('daily_withdrawal_limit').value
+    };
+    const response = await fetch('/api/admin/settings/limits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify(data)
+    });
+    const result = await response.json();
+    alert(result.success ? 'Paramètres enregistrés' : 'Erreur: ' + result.message);
+});
+
+// Fonctions de maintenance
+function clearCache() {
+    if (confirm('Vider le cache ?')) {
+        fetch('/api/admin/clear-cache', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }).then(res => res.json()).then(data => alert(data.message));
+    }
+}
+
+function backupDatabase() {
+    window.location.href = '/api/admin/backup';
+}
+
+function generateReport() {
+    window.location.href = '/api/admin/system-report';
+}
+</script>
+{% endblock %}

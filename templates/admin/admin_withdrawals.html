@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Approuver les retraits - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>🏧 Gestion des retraits</h2>
+            <p class="text-muted">Approuver ou refuser les demandes de retrait</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour
+        </button>
+    </div>
+
+    <!-- Retraits en attente -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">⏳ Retraits en attente ({{ pending_withdrawals|length }})</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Référence</th>
+                            <th>Utilisateur</th>
+                            <th>Montant</th>
+                            <th>Méthode</th>
+                            <th>Destination</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for w in pending_withdrawals %}
+                        <tr>
+                            <td><code>{{ w.reference }}</code></td>
+                            <td>
+                                <strong>{{ w.user.first_name }} {{ w.user.last_name }}</strong><br>
+                                <small>{{ w.user.email }}</small>
+                            </td>
+                            <td><strong>{{ "{:,.2f}".format(w.amount) }} HTG</strong></td>
+                            <td>{{ w.method }}</td>
+                            <td>{{ w.destination }}</td>
+                            <td>{{ w.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="approveWithdrawal({{ w.id }})">
+                                    ✅ Approuver
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="rejectWithdrawal({{ w.id }})">
+                                    ❌ Refuser
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                ✅ Aucun retrait en attente
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function approveWithdrawal(id) {
+    if (confirm('Approuver ce retrait ?')) {
+        fetch(`/admin/withdrawals/${id}/approve`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert('Erreur: ' + data.message);
+        });
+    }
+}
+
+function rejectWithdrawal(id) {
+    if (confirm('Refuser ce retrait ?')) {
+        fetch(`/admin/withdrawals/${id}/reject`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert('Erreur: ' + data.message);
+        });
+    }
+}
+</script>
+{% endblock %}

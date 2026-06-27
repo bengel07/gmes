@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}Partenaires - Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <h2 class="mb-4">🏢 Gestion des Partenaires</h2>
+
+    <!-- CREATE PARTNER -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            ➕ Créer un partenaire
+        </div>
+        <div class="card-body">
+            <input id="name" class="form-control mb-2" placeholder="Nom du partenaire">
+            <input id="email" class="form-control mb-2" placeholder="Email">
+            <input id="phone" class="form-control mb-2" placeholder="Téléphone">
+            <input id="webhook" class="form-control mb-2" placeholder="Webhook URL">
+            <input id="limit" type="number" class="form-control mb-2" value="100000">
+
+            <label class="mt-2">Permissions</label>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="perm_transfer">
+                <label class="form-check-label">TRANSFER</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="perm_balance">
+                <label class="form-check-label">BALANCE</label>
+            </div>
+
+            <button class="btn btn-success mt-3 w-100" onclick="createPartner()">
+                Créer
+            </button>
+        </div>
+    </div>
+
+
+
+    <!-- LIST -->
+    <div class="card">
+        <div class="card-header bg-dark text-white">
+             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <span>📋 Liste des partenaires</span>
+            <a href="/partner/dashboard" class="btn btn-sm btn-outline-light">
+                🏢 Dashboard Partenaires →
+            </a>
+        </div>
+        <div class="card-body">
+            <button class="btn btn-sm btn-secondary mb-3" onclick="loadPartners()">🔄 Refresh</button>
+            <div id="list">Chargement...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifier -->
+<div id="editModal" style="display:none; position:fixed; top:20%; left:30%; width:40%; background:white; padding:20px; border:1px solid #ccc; border-radius:10px; z-index:9999; box-shadow:0 0 10px rgba(0,0,0,0.3);">
+    <h4>✏️ Modifier partenaire</h4>
+    <input id="edit_id" type="hidden">
+    <input id="edit_name" class="form-control mb-2" placeholder="Nom">
+    <input id="edit_email" class="form-control mb-2" placeholder="Email">
+    <input id="edit_phone" class="form-control mb-2" placeholder="Téléphone">
+    <input id="edit_limit" class="form-control mb-2" placeholder="Limite transaction">
+
+    <button class="btn btn-success" onclick="savePartner()">💾 Sauvegarder</button>
+    <button class="btn btn-secondary" onclick="closeModal()">❌ Annuler</button>
+</div>
+
+<script>
+const API = "/api/partner/admin/partners";
+
+function getToken() {
+    return localStorage.getItem("token");
+}
+
+// 🔒 SECURITY CHECK
+const TOKEN = getToken();
+if (!TOKEN) {
+    window.location.href = "/admin/login";
+}
+
+// ======================
+// CREATE PARTNER
+// ======================
+async function createPartner() {
+    const permissions = [];
+    if (document.getElementById("perm_transfer").checked) permissions.push("TRANSFER");
+    if (document.getElementById("perm_balance").checked) permissions.push("BALANCE");
+
+    const payload = {
+        name: document.getElementById("name").value,
+        contact_email: document.getElementById("email").value,
+        contact_phone: document.getElementById("phone").value,
+        webhook_url: document.getElementById("webhook").value,
+        per_transaction_limit: parseFloat(document.getElementById("limit").value),
+        permissions: permissions
+    };
+
+    if (!payload.name) {
+        alert("❌ Le nom du partenaire est requis");
+        return;
+    }
+
+    try {
+        const res = await fetch(API, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + getToken()  // ← CORRIGÉ: enlever le ++
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            alert("✅ Partenaire créé\nClient ID: " + (data.api_keys?.client_id || "N/A"));
+            loadPartners();
+            // Réinitialiser le formulaire
+            document.getElementById("name").value = "";
+            document.getElementById("email").value = "";
+            document.getElementById("phone").value = "";
+            document.getElementById("webhook").value = "";
+            document.getElementById("limit").value = "100000";
+            document.getElementById("perm_transfer").checked = false;
+            document.getElementById("perm_balance").checked = false;
+        } else {
+            alert("❌ " + (data.error || "Erreur lors de la création"));
+        }
+    } catch (error) {
+        console.error("Erreur:", error);
+        alert("❌ Erreur réseau");
+    }
+}
+
+// ======================
+// LOAD PARTNERS
+// ======================
+async function loadPartners() {
+    try {
+        const res = await fetch(API, {
+            headers: {
+                "Authorization": "Bearer " + getToken()
+            }
+        });
+
+        // Vérifier la session expirée en premier
+        if (res.status === 401) {
+            alert("Session expirée");
+            localStorage.removeItem("token");
+            window.location.href = "/admin/login";
+            return;
+        }
+
+        const data = await res.json();
+
+        if (!data.partners || data.partners.length === 0) {
+            document.getElementById("list").innerHTML = "📭 Aucun partenaire trouvé";
+            return;
+        }
+
+        let html = `
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nom</th>
+                        <th>Code</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Limite</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        data.partners.forEach(p => {
+            html += `
+                <tr>
+                    <td>${p.id}</td>
+                    <td><strong>${escapeHtml(p.name)}</strong></td>
+                    <td><code>${p.code}</code></td>
+                    <td>${escapeHtml(p.contact_email) || "-"}</td>
+                    <td>${escapeHtml(p.contact_phone) || "-"}</td>
+                    <td>${p.per_transaction_limit?.toLocaleString() || "-"}</td>
+                    <td>
+                        ${p.is_active ? '<span class="badge bg-success">🟢 Actif</span>' : '<span class="badge bg-secondary">🔴 Inactif</span>'}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary mb-1" onclick="viewKeys(${p.id})">
+                            🔑 Clés API
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning mb-1" onclick="openEditModal(${p.id}, '${escapeHtml(p.name)}', '${escapeHtml(p.contact_email || "")}', '${escapeHtml(p.contact_phone || "")}', ${p.per_transaction_limit || 0})">
+                            ✏️ Modifier
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="togglePartner(${p.id})">
+                            ${p.is_active ? "🔒 Désactiver" : "🔓 Activer"}
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById("list").innerHTML = html;
+    } catch (error) {
+        console.error("Erreur:", error);
+        document.getElementById("list").innerHTML = "❌ Erreur de chargement";
+    }
+}
+
+// ======================
+// VIEW API KEYS
+// ======================
+async function viewKeys(partnerId) {
+    try {
+        const res = await fetch(`/api/partner/admin/partners/${partnerId}/keys`, {
+            headers: {
+                "Authorization": "Bearer " + getToken()  // ← CORRIGÉ
+            }
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            alert(
+                "🔑 CLIENT ID:\n" + data.client_id +
+                "\n\n🔐 CLIENT SECRET:\n" + data.client_secret +
+                "\n\n⚠️ Sauvegarde obligatoire (non récupérable après)"
+            );
+        } else {
+            alert("❌ " + (data.error || "Erreur récupération clés"));
+        }
+    } catch (error) {
+        console.error("Erreur:", error);
+        alert("❌ Erreur réseau");
+    }
+}
+
+// ======================
+// TOGGLE PARTNER STATUS
+// ======================
+async function togglePartner(partnerId) {
+    if (!confirm("Voulez-vous changer le statut de ce partenaire ?")) return;
+
+    try {
+        const res = await fetch(`/api/partner/admin/partners/${partnerId}/toggle`, {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + getToken()  // ← CORRIGÉ
+            }
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            loadPartners();
+        } else {
+            alert("❌ " + (data.error || "Erreur"));
+        }
+    } catch (error) {
+        console.error("Erreur:", error);
+        alert("❌ Erreur réseau");
+    }
+}
+
+// ======================
+// EDIT PARTNER MODAL
+// ======================
+let currentEditId = null;
+
+function openEditModal(id, name, email, phone, limit) {
+    currentEditId = id;
+    document.getElementById("edit_name").value = name;
+    document.getElementById("edit_email").value = email;
+    document.getElementById("edit_phone").value = phone;
+    document.getElementById("edit_limit").value = limit;
+    document.getElementById("editModal").style.display = "block";
+}
+
+function closeModal() {
+    document.getElementById("editModal").style.display = "none";
+    currentEditId = null;
+}
+
+async function savePartner() {
+    if (!currentEditId) return;
+
+    const payload = {
+        name: document.getElementById("edit_name").value,
+        contact_email: document.getElementById("edit_email").value,
+        contact_phone: document.getElementById("edit_phone").value,
+        per_transaction_limit: parseFloat(document.getElementById("edit_limit").value)
+    };
+
+    try {
+        const res = await fetch(`/api/partner/admin/partners/${currentEditId}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + getToken()  // ← CORRIGÉ
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            alert("✅ Partenaire modifié avec succès");
+            closeModal();
+            loadPartners();
+        } else {
+            alert("❌ " + (data.error || "Erreur lors de la modification"));
+        }
+    } catch (error) {
+        console.error("Erreur:", error);
+        alert("❌ Erreur réseau");
+    }
+}
+
+// ======================
+// UTILS
+// ======================
+function escapeHtml(str) {
+    if (!str) return "";
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// Chargement initial
+loadPartners();
+</script>
+
+<style>
+    #editModal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 500px;
+        max-width: 90%;
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        z-index: 10000;
+    }
+</style>
+{% endblock %}

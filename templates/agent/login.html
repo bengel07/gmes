@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Espace Agent - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-tie me-2"></i>Espace Agent GmesPay
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div id="alertMessage" class="alert d-none"></div>
+
+                    <form id="agentLoginForm">
+                        <div class="mb-3">
+                            <label class="form-label">Email agent</label>
+                            <input type="email" class="form-control" id="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mot de passe</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Code agent</label>
+                            <input type="text" class="form-control" id="agentCode"
+                                   placeholder="AGENT-XXXXXX" required>
+                            <small class="text-muted">Entrez votre code agent unique</small>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+                        </button>
+                    </form>
+
+                    <hr>
+                    <p class="text-center text-muted small">
+                        Vous n'êtes pas agent ? <a href="{{ url_for('login') }}">Connexion utilisateur</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('agentLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const agent_code = document.getElementById('agentCode').value;
+    const alertDiv = document.getElementById('alertMessage');
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/auth/agent/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email, password, agent_code })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('userRole', 'agent');
+            window.location.href = '/agent/agent_dashboard';
+        } else {
+            alertDiv.classList.remove('d-none');
+            alertDiv.classList.add('alert-danger');
+            alertDiv.textContent = data.error || 'Erreur de connexion';
+        }
+    } catch (error) {
+        alertDiv.classList.remove('d-none');
+        alertDiv.classList.add('alert-danger');
+        alertDiv.textContent = 'Erreur réseau';
+    }
+});
+</script>
+{% endblock %}

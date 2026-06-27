@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Portefeuilles - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>💼 Gestion des portefeuilles</h2>
+            <p class="text-muted">Suivi des soldes utilisateurs</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6>Total portefeuilles</h6>
+                    <h2 id="totalWallets">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Solde total HTG</h6>
+                    <h2 id="totalBalanceHTG">0 HTG</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white shadow">
+                <div class="card-body">
+                    <h6>Solde total USD</h6>
+                    <h2 id="totalBalanceUSD">0 USD</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>Portefeuilles actifs</h6>
+                    <h2 id="activeWallets">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔍 Filtres</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-2">
+                    <input type="text" class="form-control" id="filterUser" placeholder="Utilisateur (nom ou email)">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="number" class="form-control" id="filterMinBalance" placeholder="Solde min HTG">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="number" class="form-control" id="filterMaxBalance" placeholder="Solde max HTG">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">🔍 Filtrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des portefeuilles -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">💼 Portefeuilles des utilisateurs</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Utilisateur</th>
+                            <th>Email</th>
+                            <th>Solde HTG</th>
+                            <th>Solde USD</th>
+                            <th>Créé le</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="walletsTableBody">
+                        {% for wallet in wallets %}
+                        <tr>
+                            <td>{{ wallet.id }}</td>
+                            <td>
+                                <strong>{{ wallet.user.first_name }} {{ wallet.user.last_name }}</strong>
+                            </td>
+                            <td>{{ wallet.user.email }}</td>
+                            <td class="text-success">
+                                <strong>{{ "{:,.2f}".format(wallet.balance_htg) }} HTG</strong>
+                            </td>
+                            <td class="text-info">
+                                <strong>{{ "{:,.2f}".format(wallet.balance_usd) }} USD</strong>
+                            </td>
+                            <td><small>{{ wallet.created_at.strftime('%d/%m/%Y') }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewWallet({{ wallet.id }})">
+                                    👁️ Voir
+                                </button>
+                                <button class="btn btn-sm btn-warning" onclick="adjustBalance({{ wallet.id }})">
+                                    💰 Ajuster
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">📭 Aucun portefeuille trouvé</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails portefeuille -->
+<div class="modal fade" id="walletModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">💼 Détails du portefeuille</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="walletModalBody">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajuster solde -->
+<div class="modal fade" id="balanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">💰 Ajuster le solde</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="balanceForm">
+                    <div class="mb-3">
+                        <label class="form-label">Devise</label>
+                        <select class="form-select" id="balanceCurrency" required>
+                            <option value="HTG">HTG</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Action</label>
+                        <select class="form-select" id="balanceAction" required>
+                            <option value="add">➕ Ajouter</option>
+                            <option value="remove">➖ Retirer</option>
+                            <option value="set">📝 Définir</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Montant</label>
+                        <input type="number" class="form-control" id="balanceAmount" step="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Raison / Description</label>
+                        <textarea class="form-control" id="balanceReason" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveBalanceAdjust()">💾 Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allWallets = {{ wallets_json|tojson|safe }};
+let currentWalletId = null;
+
+function displayWallets(wallets) {
+    const tbody = document.getElementById('walletsTableBody');
+
+    if (wallets.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">📭 Aucun portefeuille trouvé</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = wallets.map(w => `
+        <tr>
+            <td>${w.id}</td>
+            <td><strong>${w.user.first_name} ${w.user.last_name}</strong></td>
+            <td>${w.user.email}</td>
+            <td class="text-success"><strong>${w.balance_htg.toLocaleString()} HTG</strong></td>
+            <td class="text-info"><strong>${w.balance_usd.toLocaleString()} USD</strong></td>
+            <td><small>${new Date(w.created_at).toLocaleDateString('fr-FR')}</small></td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="viewWallet(${w.id})">👁️ Voir</button>
+                <button class="btn btn-sm btn-warning" onclick="openBalanceModal(${w.id})">💰 Ajuster</button>
+            </td>
+        </table>
+    `).join('');
+}
+
+function applyFilters() {
+    const user = document.getElementById('filterUser').value.toLowerCase();
+    const minBalance = document.getElementById('filterMinBalance').value;
+    const maxBalance = document.getElementById('filterMaxBalance').value;
+
+    let filtered = allWallets;
+
+    if (user) {
+        filtered = filtered.filter(w =>
+            `${w.user.first_name} ${w.user.last_name} ${w.user.email}`.toLowerCase().includes(user)
+        );
+    }
+
+    if (minBalance) {
+        filtered = filtered.filter(w => w.balance_htg >= parseFloat(minBalance));
+    }
+
+    if (maxBalance) {
+        filtered = filtered.filter(w => w.balance_htg <= parseFloat(maxBalance));
+    }
+
+    displayWallets(filtered);
+}
+
+function resetFilters() {
+    document.getElementById('filterUser').value = '';
+    document.getElementById('filterMinBalance').value = '';
+    document.getElementById('filterMaxBalance').value = '';
+    displayWallets(allWallets);
+}
+
+function viewWallet(id) {
+    const wallet = allWallets.find(w => w.id === id);
+
+    document.getElementById('walletModalBody').innerHTML = `
+        <div class="mb-2"><strong>ID:</strong> ${wallet.id}</div>
+        <div class="mb-2"><strong>Utilisateur:</strong> ${wallet.user.first_name} ${wallet.user.last_name}</div>
+        <div class="mb-2"><strong>Email:</strong> ${wallet.user.email}</div>
+        <div class="mb-2"><strong>Téléphone:</strong> ${wallet.user.phone || 'N/A'}</div>
+        <hr>
+        <div class="mb-2"><strong>💰 Solde HTG:</strong> ${wallet.balance_htg.toLocaleString()} HTG</div>
+        <div class="mb-2"><strong>💵 Solde USD:</strong> ${wallet.balance_usd.toLocaleString()} USD</div>
+        <hr>
+        <div class="mb-2"><strong>Créé le:</strong> ${new Date(wallet.created_at).toLocaleString('fr-FR')}</div>
+        <div class="mb-2"><strong>Mis à jour le:</strong> ${new Date(wallet.updated_at).toLocaleString('fr-FR')}</div>
+    `;
+
+    new bootstrap.Modal(document.getElementById('walletModal')).show();
+}
+
+function openBalanceModal(walletId) {
+    currentWalletId = walletId;
+    document.getElementById('balanceForm').reset();
+    new bootstrap.Modal(document.getElementById('balanceModal')).show();
+}
+
+async function saveBalanceAdjust() {
+    const currency = document.getElementById('balanceCurrency').value;
+    const action = document.getElementById('balanceAction').value;
+    const amount = parseFloat(document.getElementById('balanceAmount').value);
+    const reason = document.getElementById('balanceReason').value;
+
+    if (!amount || amount <= 0) {
+        alert('Montant invalide');
+        return;
+    }
+
+    const response = await fetch(`/api/admin/wallets/${currentWalletId}/adjust`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+            currency: currency,
+            action: action,
+            amount: amount,
+            reason: reason
+        })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        alert('Solde ajusté avec succès');
+        location.reload();
+    } else {
+        alert('Erreur: ' + data.message);
+    }
+}
+
+function updateStats() {
+    document.getElementById('totalWallets').innerText = allWallets.length;
+
+    const totalHTG = allWallets.reduce((sum, w) => sum + (w.balance_htg || 0), 0);
+    const totalUSD = allWallets.reduce((sum, w) => sum + (w.balance_usd || 0), 0);
+    const active = allWallets.filter(w => (w.balance_htg > 0 || w.balance_usd > 0)).length;
+
+    document.getElementById('totalBalanceHTG').innerText = totalHTG.toLocaleString() + ' HTG';
+    document.getElementById('totalBalanceUSD').innerText = totalUSD.toLocaleString() + ' USD';
+    document.getElementById('activeWallets').innerText = active;
+}
+
+updateStats();
+</script>
+{% endblock %}

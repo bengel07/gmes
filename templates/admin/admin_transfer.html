@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau transfert - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">💸 Nouveau transfert</h5>
+                </div>
+                <div class="card-body">
+                    <form id="transferForm">
+                        <div class="mb-3">
+                            <label class="form-label">Utilisateur émetteur</label>
+                            <select class="form-select" id="from_user_id" required>
+                                <option value="">Sélectionner un utilisateur</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}">
+                                    {{ user.first_name }} {{ user.last_name }} - {{ user.email }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Utilisateur destinataire</label>
+                            <select class="form-select" id="to_user_id" required>
+                                <option value="">Sélectionner un utilisateur</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}">
+                                    {{ user.first_name }} {{ user.last_name }} - {{ user.email }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Montant (HTG)</label>
+                            <input type="number" class="form-control" id="amount" step="0.01" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description (optionnel)</label>
+                            <textarea class="form-control" id="description" rows="2"></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">
+                                💸 Effectuer le transfert
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="window.location.href='/admin/dashboard'">
+                                Annuler
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('transferForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const from_user_id = document.getElementById('from_user_id').value;
+    const to_user_id = document.getElementById('to_user_id').value;
+    const amount = document.getElementById('amount').value;
+    const description = document.getElementById('description').value;
+
+    if (from_user_id === to_user_id) {
+        alert('L\'émetteur et le destinataire doivent être différents');
+        return;
+    }
+
+    if (confirm(`Effectuer un transfert de ${amount} HTG ?`)) {
+        const response = await fetch('/api/admin/transfer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                from_user_id: parseInt(from_user_id),
+                to_user_id: parseInt(to_user_id),
+                amount: parseFloat(amount),
+                description: description
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Transfert effectué avec succès !');
+            window.location.href = '/admin/dashboard';
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Espace Agent - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2>Espace Agent GmesPay</h2>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5>Confirmer un dépôt</h5>
+                </div>
+                <div class="card-body">
+                    <form id="confirmDepositForm">
+                        <div class="mb-3">
+                            <label>Référence du dépôt</label>
+                            <input type="text" class="form-control" id="refCode" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            Confirmer le dépôt
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5>Mes commissions</h5>
+                </div>
+                <div class="card-body">
+                    <h3 id="agentBalance">0 HTG</h3>
+                    <button class="btn btn-outline-primary mt-2" onclick="withdrawCommission()">
+                        Retirer mes commissions
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+
+document.getElementById('confirmDepositForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const reference = document.getElementById('refCode').value;
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/cash/confirm', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ reference })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`Dépôt confirmé! Montant crédité: ${data.amount} HTG`);
+            document.getElementById('refCode').value = '';
+        } else {
+            alert(data.error || 'Erreur');
+        }
+    } catch (error) {
+        alert('Erreur réseau');
+    }
+});
+</script>
+{% endblock %}

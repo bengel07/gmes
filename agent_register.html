@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Devenir agent - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h4 class="mb-0">🤝 Devenir agent GmesPay</h4>
+                </div>
+                <div class="card-body">
+                    <form id="agentRegisterForm">
+                        <div class="alert alert-info">
+                            <strong>📋 Critères requis :</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>✅ Compte vérifié (KYC validé)</li>
+                                <li>✅ Compte actif depuis plus de 30 jours</li>
+                                <li>✅ Avoir une structure physique (boutique, bureau)</li>
+                                <li>✅ Fournir un extrait RNE ou patente</li>
+                                <li>✅ Avoir un capital minimum disponible</li>
+                                <li>✅ Accepter les conditions générales agents</li>
+                            </ul>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Nom de l'entreprise *</label>
+                            <input type="text" class="form-control" id="business_name" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Adresse de l'entreprise *</label>
+                            <input type="text" class="form-control" id="business_address" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Numéro de patente / RNE *</label>
+                            <input type="text" class="form-control" id="business_license" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Type de structure</label>
+                            <select class="form-select" id="business_type" required>
+                                <option value="">Sélectionner</option>
+                                <option value="boutique">Boutique</option>
+                                <option value="bureau">Bureau</option>
+                                <option value="supermarché">Supermarché</option>
+                                <option value="pharmacie">Pharmacie</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Capital initial (HTG) *</label>
+                            <input type="number" class="form-control" id="initial_capital" min="50000" step="1000" required>
+                            <small class="text-muted">Minimum 50 000 HTG</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Commission souhaitée (%)</label>
+                            <input type="number" class="form-control" id="desired_commission" step="0.1" min="0.5" max="5">
+                            <small class="text-muted">Entre 0.5% et 5% (à négocier)</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Documents (PDF/Image)</label>
+                            <input type="file" class="form-control" id="documents" multiple accept=".pdf,.jpg,.png">
+                            <small class="text-muted">Patente, identification, photo local</small>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="agree_terms" required>
+                            <label class="form-check-label">
+                                J'accepte les <a href="/agent-terms" target="_blank">conditions générales agents</a>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning w-100">
+                            📤 Soumettre ma candidature
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('agentRegisterForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    formData.append('business_name', document.getElementById('business_name').value);
+    formData.append('business_address', document.getElementById('business_address').value);
+    formData.append('business_license', document.getElementById('business_license').value);
+    formData.append('business_type', document.getElementById('business_type').value);
+    formData.append('initial_capital', document.getElementById('initial_capital').value);
+    formData.append('desired_commission', document.getElementById('desired_commission').value);
+
+    const files = document.getElementById('documents').files;
+    for (let i = 0; i < files.length; i++) {
+        formData.append('documents', files[i]);
+    }
+
+    const response = await fetch('/api/agent/apply', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        alert('✅ Candidature envoyée ! Un administrateur vous contactera sous 48h.');
+        window.location.href = '/dashboard';
+    } else {
+        alert('❌ Erreur: ' + result.message);
+    }
+});
+</script>
+{% endblock %}

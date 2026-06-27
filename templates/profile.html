@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Mon profil - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Mon profil</h2>
+
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div id="profileInfo">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary"></div>
+                            <p>Chargement...</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <h5>Vérification KYC</h5>
+                    <div id="kycStatus"></div>
+                    <hr>
+                    <button id="logoutBtn" class="btn btn-danger w-100">
+                        <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+
+async function loadProfile() {
+    try {
+        const response = await fetch('/api/auth/me', {
+            headers: {Authorization: `Bearer ${token}`}
+        });
+        const user = await response.json();
+
+        document.getElementById('profileInfo').innerHTML = `
+            <p><strong>Nom:</strong> ${user.first_name} ${user.last_name}</p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Téléphone:</strong> ${user.phone}</p>
+            <p><strong>Vérifié:</strong> ${user.is_verified ? '✅ Oui' : '❌ Non'}</p>
+            <p><strong>Membre depuis:</strong> ${new Date(user.created_at).toLocaleDateString()}</p>
+        `;
+
+        const kycResponse = await fetch('/api/kyc/status', {
+            headers: {Authorization: `Bearer ${token}`}
+        });
+        const kyc = await kycResponse.json();
+
+        let statusHtml = '';
+        if (kyc.status === 'approved') {
+            statusHtml = '<span class="badge bg-success">Approuvé</span>';
+        } else if (kyc.status === 'pending') {
+            statusHtml = '<span class="badge bg-warning">En attente</span>';
+        } else if (kyc.status === 'rejected') {
+            statusHtml = `<span class="badge bg-danger">Rejeté</span><br><small>${kyc.rejection_reason}</small>`;
+        } else {
+            statusHtml = '<a href="#" class="btn btn-sm btn-primary">Soumettre KYC</a>';
+        }
+        document.getElementById('kycStatus').innerHTML = statusHtml;
+
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/logout';
+});
+
+loadProfile();
+</script>
+{% endblock %}

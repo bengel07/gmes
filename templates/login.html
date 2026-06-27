@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0"><i class="fas fa-sign-in-alt me-2"></i>Connexion</h4>
+                </div>
+                <div class="card-body">
+                    <div id="alertMessage" class="alert d-none"></div>
+
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mot de passe</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+                        </button>
+                        <p class="text-center mb-0">
+                            <a href="/forgot-password">Mot de passe oublié ?</a></p>
+                    </form>
+
+                    <hr>
+                    <p class="text-center mb-0">
+                        Pas encore de compte ? <a href="{{ url_for('register') }}">Inscrivez-vous</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const alertDiv = document.getElementById('alertMessage');
+
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({email, password})
+        });
+
+        const data = await response.json();
+
+
+        if (response.ok) {
+            localStorage.setItem('token', data.access_token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+
+            const user = data.user;
+
+            if (user.is_admin) {
+                window.location.href = '/admin/dashboard';
+            }
+            else if (user.is_agent) {
+                window.location.href = '/agent/agent_dashboard';
+            }
+            else {
+                window.location.href = '/dashboard';
+            }
+        } else {
+            alertDiv.classList.remove('d-none', 'alert-success');
+            alertDiv.classList.add('alert-danger');
+            alertDiv.textContent = data.error || 'Email ou mot de passe incorrect';
+        }
+    } catch (error) {
+        alertDiv.classList.remove('d-none');
+        alertDiv.classList.add('alert-danger');
+        alertDiv.textContent = 'Erreur réseau. Vérifiez que le serveur est démarré.';
+    }
+    });
+</script>
+{% endblock %}

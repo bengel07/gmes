@@ -1,0 +1,685 @@
+{% extends "base.html" %}
+
+{% block title %}Portefeuille - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Mon portefeuille</h2>
+
+    <div class="row">
+        <!-- Section Dépôt MonCash -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-mobile-alt me-2"></i>Dépôt via MonCash</h5>
+                </div>
+                <div class="card-body">
+                    <form id="moncashDepositForm">
+                        <div class="mb-3">
+                            <label class="form-label">Numéro MonCash</label>
+                            <input type="tel" class="form-control" id="moncashPhone"
+                                   placeholder="509XXXXXXXX" required>
+                            <small class="text-muted">Entrez votre numéro MonCash</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Montant (HTG)</label>
+                            <input type="number" class="form-control" id="moncashAmount"
+                                   min="50" max="50000" required>
+                            <small class="text-muted">Minimum: 50 HTG | Maximum: 50,000 HTG</small>
+                        </div>
+                        <div class="mb-3">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Frais: 2% du montant
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-paper-plane me-2"></i>Payer avec MonCash
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Dépôt NatCash -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-mobile-alt me-2"></i>Dépôt via NatCash</h5>
+                </div>
+                <div class="card-body">
+                    <form id="natcashDepositForm">
+                        <div class="mb-3">
+                            <label class="form-label">Numéro NatCash</label>
+                            <input type="tel" class="form-control" id="natcashPhone"
+                                   placeholder="509XXXXXXXX" required>
+                            <small class="text-muted">Entrez votre numéro NatCash</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Montant (HTG)</label>
+                            <input type="number" class="form-control" id="natcashAmount"
+                                   min="50" max="50000" required>
+                            <small class="text-muted">Minimum: 50 HTG | Maximum: 50,000 HTG</small>
+                        </div>
+                        <div class="mb-3">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Frais: 2% du montant
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-paper-plane me-2"></i>Payer avec NatCash
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Section Virement Bancaire -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-university me-2"></i>Virement Bancaire</h5>
+                </div>
+                <div class="card-body">
+                    <form id="bankTransferForm">
+                        <div class="mb-3">
+                            <label class="form-label">Montant (HTG)</label>
+                            <input type="number" class="form-control" id="bankAmount"
+                                   min="500" max="100000" required>
+                            <small class="text-muted">Minimum: 500 HTG | Maximum: 100,000 HTG | Frais: 0%</small>
+                        </div>
+                        <button type="button" class="btn btn-info w-100" onclick="showBankTransferModal()">
+                            <i class="fas fa-paper-plane me-2"></i>Faire un virement bancaire
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Dépôt Cash -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Dépôt Cash (Espèces)</h5>
+                </div>
+                <div class="card-body">
+                    <p>Déposez de l'argent liquide chez nos agents partenaires</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Montant (HTG)</label>
+                                <input type="number" class="form-control" id="cashAmount"
+                                       min="100" max="50000" required>
+                                <small>Min: 100 HTG | Max: 50,000 HTG</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sélectionnez un agent</label>
+                            <select class="form-select" id="cashAgentSelect">
+                                <option value="">Chargement des agents...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-warning w-100 mt-3" onclick="initiateCashDeposit()">
+                        <i class="fas fa-money-bill-wave me-2"></i>Déposer en espèces
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Section Conversion -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Convertir HTG → USD</h5>
+                </div>
+                <div class="card-body">
+                    <form id="convertForm">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Montant HTG</label>
+                                    <input type="number" class="form-control" id="convertAmount" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Taux de change</label>
+                                    <input type="text" class="form-control" id="exchangeRate" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Vous recevrez (USD)</label>
+                                    <input type="text" class="form-control" id="convertResult" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fas fa-exchange-alt me-2"></i>Convertir
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historique des dépôts -->
+    <div class="card shadow">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Historique des dépôts</h5>
+        </div>
+        <div class="card-body">
+            <div id="depositsHistory">Chargement...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal MonCash -->
+<div class="modal fade" id="moncashModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Paiement MonCash</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="moncashLoading" class="text-center">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="mt-2">Redirection vers MonCash...</p>
+                </div>
+                <div id="moncashSuccess" style="display:none;">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> Paiement initié avec succès!
+                    </div>
+                    <p>Vous allez être redirigé vers MonCash pour finaliser le paiement.</p>
+                </div>
+                <div id="moncashError" style="display:none;">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> <span id="moncashErrorMessage"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal NatCash -->
+<div class="modal fade" id="natcashModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Paiement NatCash</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="natcashLoading" class="text-center">
+                    <div class="spinner-border text-success"></div>
+                    <p class="mt-2">Traitement en cours...</p>
+                </div>
+                <div id="natcashSuccess" style="display:none;">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> Demande envoyée!
+                    </div>
+                    <p>Vérifiez votre téléphone NatCash pour finaliser le paiement.</p>
+                </div>
+                <div id="natcashError" style="display:none;">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i> <span id="natcashErrorMessage"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Instructions Virement Bancaire -->
+<div class="modal fade" id="bankTransferModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-university me-2"></i>Instructions de virement bancaire</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="bankInstructions">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-info"></div>
+                        <p class="mt-2">Chargement des informations bancaires...</p>
+                    </div>
+                </div>
+                <form id="uploadReceiptForm" style="display:none;">
+                    <input type="hidden" id="currentDepositId">
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Après avoir effectué le virement, uploader votre reçu ici
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reçu du virement</label>
+                        <input type="file" class="form-control" id="receiptFile" accept="image/*,.pdf" required>
+                        <small class="text-muted">Formats acceptés: PNG, JPG, JPEG, PDF</small>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-upload me-2"></i>Uploader le reçu
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Succès Virement -->
+<div class="modal fade" id="bankSuccessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Demande envoyée</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                <p>Votre demande de dépôt a été enregistrée.</p>
+                <p>Vous recevrez une notification une fois le virement confirmé.</p>
+                <p class="text-muted small">Délai de traitement: 24-48h</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cash -->
+<div class="modal fade" id="cashModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Dépôt Cash - Instructions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="cashModalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-warning"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login';
+
+// ==================== MONCASH ====================
+document.getElementById('moncashDepositForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const phone = document.getElementById('moncashPhone').value;
+    const amount = parseFloat(document.getElementById('moncashAmount').value);
+
+    if (!phone || !amount || amount < 50) {
+        alert('Veuillez remplir tous les champs (minimum 50 HTG)');
+        return;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('moncashModal'));
+    document.getElementById('moncashLoading').style.display = 'block';
+    document.getElementById('moncashSuccess').style.display = 'none';
+    document.getElementById('moncashError').style.display = 'none';
+    modal.show();
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/moncash/initiate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ phone, amount })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('moncashLoading').style.display = 'none';
+            document.getElementById('moncashSuccess').style.display = 'block';
+            setTimeout(() => {
+                window.location.href = data.redirect_url;
+            }, 2000);
+        } else {
+            document.getElementById('moncashLoading').style.display = 'none';
+            document.getElementById('moncashError').style.display = 'block';
+            document.getElementById('moncashErrorMessage').innerText = data.error || 'Erreur lors du paiement';
+        }
+    } catch (error) {
+        document.getElementById('moncashLoading').style.display = 'none';
+        document.getElementById('moncashError').style.display = 'block';
+        document.getElementById('moncashErrorMessage').innerText = 'Erreur réseau';
+    }
+});
+
+// ==================== NATCASH ====================
+document.getElementById('natcashDepositForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const phone = document.getElementById('natcashPhone').value;
+    const amount = parseFloat(document.getElementById('natcashAmount').value);
+
+    if (!phone || !amount || amount < 50) {
+        alert('Veuillez remplir tous les champs (minimum 50 HTG)');
+        return;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('natcashModal'));
+    document.getElementById('natcashLoading').style.display = 'block';
+    document.getElementById('natcashSuccess').style.display = 'none';
+    document.getElementById('natcashError').style.display = 'none';
+    modal.show();
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/natcash/initiate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ phone, amount })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('natcashLoading').style.display = 'none';
+            document.getElementById('natcashSuccess').style.display = 'block';
+            setTimeout(() => {
+                modal.hide();
+                location.reload();
+            }, 3000);
+        } else {
+            document.getElementById('natcashLoading').style.display = 'none';
+            document.getElementById('natcashError').style.display = 'block';
+            document.getElementById('natcashErrorMessage').innerText = data.error || 'Erreur lors du paiement';
+        }
+    } catch (error) {
+        document.getElementById('natcashLoading').style.display = 'none';
+        document.getElementById('natcashError').style.display = 'block';
+        document.getElementById('natcashErrorMessage').innerText = 'Erreur réseau';
+    }
+});
+
+// ==================== VIREMENT BANCAIRE ====================
+let currentBankDeposit = null;
+
+async function showBankTransferModal() {
+    const amount = document.getElementById('bankAmount').value;
+
+    if (!amount || amount < 500) {
+        alert('Montant minimum: 500 HTG');
+        return;
+    }
+    if (amount > 100000) {
+        alert('Montant maximum: 100,000 HTG');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/bank-transfer/initiate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ amount: parseFloat(amount) })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            currentBankDeposit = data;
+            const bankInfo = data.bank_info;
+
+            document.getElementById('bankInstructions').innerHTML = `
+                <div class="alert alert-info">
+                    <h6>Référence unique: <strong class="text-dark">${bankInfo.reference}</strong></h6>
+                    <p class="mb-0">À utiliser comme motif du virement</p>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h6>Coordonnées bancaires:</h6>
+                        <table class="table table-borderless">
+                            <tr><td><strong>Banque:</strong></td><td>${bankInfo.bank_name}</td></tr>
+                            <tr><td><strong>Titulaire:</strong></td><td>${bankInfo.account_name}</td></tr>
+                            <tr><td><strong>Numéro de compte:</strong></td><td>${bankInfo.account_number}</td></tr>
+                            <tr><td><strong>Code banque:</strong></td><td>${bankInfo.bank_code}</td></tr>
+                            <tr><td><strong>Montant:</strong></td><td>${bankInfo.amount} HTG</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important:</strong> ${bankInfo.instructions}
+                </div>
+            `;
+
+            document.getElementById('uploadReceiptForm').style.display = 'block';
+            document.getElementById('currentDepositId').value = data.deposit_id;
+
+            const modal = new bootstrap.Modal(document.getElementById('bankTransferModal'));
+            modal.show();
+        } else {
+            alert(data.error || 'Erreur lors de l\'initiation');
+        }
+    } catch (error) {
+        alert('Erreur réseau');
+    }
+}
+
+document.getElementById('uploadReceiptForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const depositId = document.getElementById('currentDepositId').value;
+    const file = document.getElementById('receiptFile').files[0];
+
+    if (!file) {
+        alert('Veuillez sélectionner un fichier');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('deposit_id', depositId);
+    formData.append('receipt', file);
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/bank-transfer/upload-receipt', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bankTransferModal'));
+            modal.hide();
+
+            const successModal = new bootstrap.Modal(document.getElementById('bankSuccessModal'));
+            successModal.show();
+
+            document.getElementById('bankAmount').value = '';
+            document.getElementById('receiptFile').value = '';
+
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            alert(data.error || 'Erreur lors de l\'upload');
+        }
+    } catch (error) {
+        alert('Erreur réseau');
+    }
+});
+
+// ==================== CASH ====================
+async function loadCashAgents() {
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/cash/agents', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        const select = document.getElementById('cashAgentSelect');
+
+        if (data.agents && data.agents.length > 0) {
+            select.innerHTML = '<option value="">Choisissez un agent</option>' +
+                data.agents.map(a => `<option value="${a.agent_code}">${a.business_name} - ${a.business_address}</option>`).join('');
+        } else {
+            select.innerHTML = '<option value="">Aucun agent disponible pour le moment</option>';
+        }
+    } catch (error) {
+        console.error('Error loading agents:', error);
+    }
+}
+
+async function initiateCashDeposit() {
+    const amount = document.getElementById('cashAmount').value;
+    const agentCode = document.getElementById('cashAgentSelect').value;
+
+    if (!amount || amount < 100) {
+        alert('Montant minimum: 100 HTG');
+        return;
+    }
+    if (!agentCode) {
+        alert('Veuillez sélectionner un agent');
+        return;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('cashModal'));
+    document.getElementById('cashModalBody').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-warning"></div>
+            <p class="mt-3">Traitement en cours...</p>
+        </div>
+    `;
+    modal.show();
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/cash/initiate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ amount: parseFloat(amount), agent_code: agentCode })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('cashModalBody').innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h6>Dépôt initié avec succès!</h6>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <p><strong>Référence:</strong> ${data.reference}</p>
+                        <p><strong>Montant:</strong> ${data.amount} HTG</p>
+                        <p><strong>Frais:</strong> ${data.fee} HTG (${(data.fee/data.amount*100).toFixed(1)}%)</p>
+                        <p><strong>Net à recevoir:</strong> ${data.net_amount} HTG</p>
+                        <hr>
+                        <p><strong>Agent:</strong> ${data.agent.name}</p>
+                        <p><strong>Adresse:</strong> ${data.agent.address}</p>
+                        <p><strong>Tél:</strong> ${data.agent.phone}</p>
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-info-circle"></i>
+                            Présentez-vous chez l'agent avec cette référence: <strong>${data.reference}</strong>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary mt-3 w-100" data-bs-dismiss="modal">Fermer</button>
+            `;
+            document.getElementById('cashAmount').value = '';
+            document.getElementById('cashAgentSelect').value = '';
+        } else {
+            document.getElementById('cashModalBody').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    ${data.error || 'Erreur lors du dépôt'}
+                </div>
+                <button class="btn btn-secondary mt-3 w-100" data-bs-dismiss="modal">Fermer</button>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('cashModalBody').innerHTML = `
+            <div class="alert alert-danger">
+                Erreur réseau. Veuillez réessayer.
+            </div>
+            <button class="btn btn-secondary mt-3 w-100" data-bs-dismiss="modal">Fermer</button>
+        `;
+    }
+}
+
+// ==================== CONVERSION ====================
+async function loadExchangeRate() {
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/wallet/rate', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        document.getElementById('exchangeRate').value = `1 USD = ${data.usd_to_htg} HTG`;
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+document.getElementById('convertAmount')?.addEventListener('input', async () => {
+    const amount = document.getElementById('convertAmount').value;
+    if (amount > 0) {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/wallet/rate', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await response.json();
+            const usdAmount = amount / data.usd_to_htg;
+            document.getElementById('convertResult').value = usdAmount.toFixed(2);
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+});
+
+document.getElementById('convertForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const amount = document.getElementById('convertAmount').value;
+    if (!amount || amount <= 0) {
+        alert('Veuillez entrer un montant valide');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/wallet/convert', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ amount_htg: parseFloat(amount) })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`Conversion réussie! Vous avez reçu ${data.received} USD`);
+            location.reload();
+        } else {
+            alert(data.error || 'Erreur lors de la conversion');
+        }
+    } catch (error) {
+        alert('Erreur réseau');
+    }
+});
+
+// Initialisation
+loadCashAgents();
+loadExchangeRate();
+</script>
+{% endblock %}

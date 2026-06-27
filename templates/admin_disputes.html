@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Litiges - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>⚠️ Gestion des litiges</h2>
+            <p class="text-muted">Suivi et résolution des litiges utilisateurs</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour
+        </button>
+    </div>
+
+    <!-- Statistiques des litiges -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body">
+                    <h6>Litiges ouverts</h6>
+                    <h2 id="openDisputes">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>En cours</h6>
+                    <h2 id="pendingDisputes">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Résolus</h6>
+                    <h2 id="resolvedDisputes">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white shadow">
+                <div class="card-body">
+                    <h6>Montant total litigé</h6>
+                    <h2 id="totalAmount">0 HTG</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des litiges -->
+    <div class="card shadow">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">📋 Liste des litiges</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Référence</th>
+                            <th>Utilisateur</th>
+                            <th>Transaction</th>
+                            <th>Montant</th>
+                            <th>Raison</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="disputesTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                ⏳ Chargement...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails litige -->
+<div class="modal fade" id="disputeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">⚠️ Détails du litige</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="disputeModalBody">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-success" onclick="resolveDispute()">✅ Résoudre</button>
+                <button type="button" class="btn btn-danger" onclick="rejectDispute()">❌ Rejeter</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentDisputeId = null;
+
+async function loadDisputes() {
+    try {
+        const response = await fetch('/api/admin/disputes', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+
+        // Mettre à jour les stats
+        document.getElementById('openDisputes').innerText = data.stats.open || 0;
+        document.getElementById('pendingDisputes').innerText = data.stats.pending || 0;
+        document.getElementById('resolvedDisputes').innerText = data.stats.resolved || 0;
+        document.getElementById('totalAmount').innerText = (data.stats.total_amount || 0).toLocaleString() + ' HTG';
+
+        // Afficher les litiges
+        const tbody = document.getElementById('disputesTableBody');
+
+        if (data.disputes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">✅ Aucun litige à traiter</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.disputes.map(dispute => `
+            <tr>
+                <td><code>${dispute.reference || '#' + dispute.id}</code></td>
+                <td>
+                    <strong>${dispute.user_name}</strong><br>
+                    <small>${dispute.user_email}</small>
+                </td>
+                <td><code>${dispute.transaction_ref || '-'}</code></td>
+                <td><strong>${dispute.amount.toLocaleString()} ${dispute.currency}</strong></td>
+                <td>${dispute.reason.substring(0, 50)}${dispute.reason.length > 50 ? '...' : ''}</td>
+                <td>
+                    ${getStatusBadge(dispute.status)}
+                </td>
+                <td><small>${new Date(dispute.created_at).toLocaleString('fr-FR')}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-info" onclick="viewDispute(${dispute.id})">
+                        👁️ Voir
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        console.error('Erreur:', err);
+        document.getElementById('disputesTableBody').innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">❌ Erreur de chargement</td></tr>';
+    }
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'open': '<span class="badge bg-danger">Ouvert</span>',
+        'pending': '<span class="badge bg-warning">En cours</span>',
+        'resolved': '<span class="badge bg-success">Résolu</span>',
+        'rejected': '<span class="badge bg-secondary">Rejeté</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+}
+
+async function viewDispute(id) {
+    currentDisputeId = id;
+
+    const response = await fetch(`/api/admin/disputes/${id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    const dispute = await response.json();
+
+    document.getElementById('disputeModalBody').html = `
+        <div class="mb-3">
+            <strong>Référence:</strong> ${dispute.reference || '#' + dispute.id}
+        </div>
+        <div class="mb-3">
+            <strong>Utilisateur:</strong> ${dispute.user_name} (${dispute.user_email})
+        </div>
+        <div class="mb-3">
+            <strong>Transaction:</strong> ${dispute.transaction_ref || 'N/A'}
+        </div>
+        <div class="mb-3">
+            <strong>Montant:</strong> ${dispute.amount.toLocaleString()} ${dispute.currency}
+        </div>
+        <div class="mb-3">
+            <strong>Raison:</strong><br>
+            ${dispute.reason}
+        </div>
+        <div class="mb-3">
+            <strong>Description:</strong><br>
+            ${dispute.description || 'Aucune description'}
+        </div>
+        <div class="mb-3">
+            <strong>Preuves:</strong><br>
+            ${dispute.evidence ? `<a href="${dispute.evidence}" target="_blank" class="btn btn-sm btn-info">📎 Voir les preuves</a>` : 'Aucune preuve'}
+        </div>
+    `;
+
+    new bootstrap.Modal(document.getElementById('disputeModal')).show();
+}
+
+async function resolveDispute() {
+    if (confirm('Confirmer la résolution de ce litige ?')) {
+        const response = await fetch(`/api/admin/disputes/${currentDisputeId}/resolve`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Litige résolu');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+async function rejectDispute() {
+    if (confirm('Rejeter ce litige ?')) {
+        const response = await fetch(`/api/admin/disputes/${currentDisputeId}/reject`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Litige rejeté');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+// Charger au démarrage
+loadDisputes();
+</script>
+{% endblock %}

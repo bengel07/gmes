@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}Cartes virtuelles - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>💳 Gestion des cartes virtuelles</h2>
+            <p class="text-muted">Suivi et gestion des cartes virtuelles des utilisateurs</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6>Total cartes</h6>
+                    <h2 id="totalCards">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Cartes actives</h6>
+                    <h2 id="activeCards">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body">
+                    <h6>Cartes bloquées</h6>
+                    <h2 id="blockedCards">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>Montant utilisé</h6>
+                    <h2 id="totalUsed">0 USD</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔍 Filtres</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-2">
+                    <input type="text" class="form-control" id="filterUser" placeholder="Utilisateur">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Tous les statuts</option>
+                        <option value="active">Actif</option>
+                        <option value="blocked">Bloqué</option>
+                        <option value="expired">Expiré</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <select class="form-select" id="filterBrand">
+                        <option value="">Toutes les marques</option>
+                        <option value="Visa">Visa</option>
+                        <option value="Mastercard">Mastercard</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">🔍 Filtrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des cartes -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">💳 Cartes virtuelles</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Utilisateur</th>
+                            <th>Carte</th>
+                            <th>Marque</th>
+                            <th>Expiration</th>
+                            <th>Limite mensuelle</th>
+                            <th>Utilisé</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cardsTableBody">
+                        {% for card in cards %}
+                        <tr>
+                            <td>{{ card.id }}</td>
+                            <td>
+                                <strong>{{ card.user.first_name }} {{ card.user.last_name }}</strong><br>
+                                <small>{{ card.user.email }}</small>
+                            </td>
+                            <td>•••• {{ card.card_last4 }}</td>
+                            <td>{{ card.card_brand }}</td>
+                            <td>{{ card.expiry_month }}/{{ card.expiry_year }}</td>
+                            <td>{{ "{:,.2f}".format(card.monthly_limit) }} USD</td>
+                            <td>{{ "{:,.2f}".format(card.used_amount) }} USD</td>
+                            <td>
+                                {% if card.status == 'active' %}
+                                    <span class="badge bg-success">Actif</span>
+                                {% elif card.status == 'blocked' %}
+                                    <span class="badge bg-danger">Bloqué</span>
+                                {% elif card.status == 'expired' %}
+                                    <span class="badge bg-secondary">Expiré</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ card.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewCard({{ card.id }})">
+                                    👁️ Voir
+                                </button>
+                                {% if card.status == 'active' %}
+                                <button class="btn btn-sm btn-warning" onclick="blockCard({{ card.id }})">
+                                    🔒 Bloquer
+                                </button>
+                                {% elif card.status == 'blocked' %}
+                                <button class="btn btn-sm btn-success" onclick="unblockCard({{ card.id }})">
+                                    🔓 Débloquer
+                                </button>
+                                {% endif %}
+                             </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">📭 Aucune carte virtuelle trouvée</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails carte -->
+<div class="modal fade" id="cardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">💳 Détails de la carte</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="cardModalBody">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-warning" onclick="adjustLimit()">💰 Ajuster limite</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allCards = {{ cards|tojson }};
+let currentCardId = null;
+
+function displayCards(cards) {
+    const tbody = document.getElementById('cardsTableBody');
+
+    if (cards.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4">📭 Aucune carte trouvée</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = cards.map(c => `
+        <tr>
+            <td>${c.id}</td>
+            <td>
+                <strong>${c.user.first_name} ${c.user.last_name}</strong><br>
+                <small>${c.user.email}</small>
+            </td>
+            <td>•••• ${c.card_last4}</td>
+            <td>${c.card_brand}</td>
+            <td>${c.expiry_month}/${c.expiry_year}</td>
+            <td>${c.monthly_limit.toLocaleString()} ${c.currency}</td>
+            <td>${c.used_amount.toLocaleString()} ${c.currency}</td>
+            <td>${getStatusBadge(c.status)}</td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="viewCard(${c.id})">👁️ Voir</button>
+                ${c.status === 'active' ?
+                    `<button class="btn btn-sm btn-warning" onclick="blockCard(${c.id})">🔒 Bloquer</button>` :
+                    (c.status === 'blocked' ?
+                        `<button class="btn btn-sm btn-success" onclick="unblockCard(${c.id})">🔓 Débloquer</button>` :
+                        '')
+                }
+             </td>
+        </tr>
+    `).join('');
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'active': '<span class="badge bg-success">Actif</span>',
+        'blocked': '<span class="badge bg-danger">Bloqué</span>',
+        'expired': '<span class="badge bg-secondary">Expiré</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+}
+
+function applyFilters() {
+    const user = document.getElementById('filterUser').value.toLowerCase();
+    const status = document.getElementById('filterStatus').value;
+    const brand = document.getElementById('filterBrand').value;
+
+    let filtered = allCards;
+
+    if (user) {
+        filtered = filtered.filter(c =>
+            `${c.user.first_name} ${c.user.last_name} ${c.user.email}`.toLowerCase().includes(user)
+        );
+    }
+
+    if (status) {
+        filtered = filtered.filter(c => c.status === status);
+    }
+
+    if (brand) {
+        filtered = filtered.filter(c => c.card_brand === brand);
+    }
+
+    displayCards(filtered);
+}
+
+function resetFilters() {
+    document.getElementById('filterUser').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterBrand').value = '';
+    displayCards(allCards);
+}
+
+async function viewCard(id) {
+    currentCardId = id;
+    const card = allCards.find(c => c.id === id);
+
+    document.getElementById('cardModalBody').innerHTML = `
+        <div class="mb-2"><strong>ID:</strong> ${card.id}</div>
+        <div class="mb-2"><strong>Utilisateur:</strong> ${card.user.first_name} ${card.user.last_name}</div>
+        <div class="mb-2"><strong>Email:</strong> ${card.user.email}</div>
+        <div class="mb-2"><strong>Numéro:</strong> •••• •••• •••• ${card.card_last4}</div>
+        <div class="mb-2"><strong>Marque:</strong> ${card.card_brand}</div>
+        <div class="mb-2"><strong>Expiration:</strong> ${card.expiry_month}/${card.expiry_year}</div>
+        <div class="mb-2"><strong>Limite mensuelle:</strong> ${card.monthly_limit.toLocaleString()} ${card.currency}</div>
+        <div class="mb-2"><strong>Utilisé ce mois:</strong> ${card.used_amount.toLocaleString()} ${card.currency}</div>
+        <div class="mb-2"><strong>Reste:</strong> ${(card.monthly_limit - card.used_amount).toLocaleString()} ${card.currency}</div>
+        <div class="mb-2"><strong>Statut:</strong> ${card.status}</div>
+        <div class="mb-2"><strong>Créée le:</strong> ${new Date(card.created_at).toLocaleString('fr-FR')}</div>
+    `;
+
+    new bootstrap.Modal(document.getElementById('cardModal')).show();
+}
+
+async function blockCard(id) {
+    if (confirm('Bloquer cette carte ?')) {
+        const response = await fetch(`/api/admin/cards/${id}/block`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Carte bloquée');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+async function unblockCard(id) {
+    if (confirm('Débloquer cette carte ?')) {
+        const response = await fetch(`/api/admin/cards/${id}/unblock`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Carte débloquée');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+async function adjustLimit() {
+    const newLimit = prompt('Nouvelle limite mensuelle (USD):');
+    if (newLimit) {
+        const response = await fetch(`/api/admin/cards/${currentCardId}/limit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ limit: parseFloat(newLimit) })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Limite mise à jour');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+// Mettre à jour les stats
+function updateStats() {
+    document.getElementById('totalCards').innerText = allCards.length;
+    document.getElementById('activeCards').innerText = allCards.filter(c => c.status === 'active').length;
+    document.getElementById('blockedCards').innerText = allCards.filter(c => c.status === 'blocked').length;
+    const totalUsed = allCards.reduce((sum, c) => sum + (c.used_amount || 0), 0);
+    document.getElementById('totalUsed').innerText = totalUsed.toLocaleString() + ' USD';
+}
+
+updateStats();
+</script>
+{% endblock %}

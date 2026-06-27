@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>🔄 Transactions</h2>
+            <p class="text-muted">{{ partner.name }} - {{ partner.code }}</p>
+        </div>
+        <a href="{{ url_for('partner_dashboard') }}" class="btn btn-secondary">
+            ← Retour au dashboard
+        </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6 class="text-white-50">Total transactions</h6>
+                    <h2>{{ total_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6 class="text-white-50">Volume total</h6>
+                    <h2>{{ "%.2f"|format(total_volume) }} HTG</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6 class="text-dark">En attente</h6>
+                    <h2>{{ pending_count }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔍 Filtres</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <input type="text" class="form-control" id="filterType" placeholder="Type">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Tous les statuts</option>
+                        <option value="completed">Complété</option>
+                        <option value="pending">En attente</option>
+                        <option value="failed">Échoué</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="date" class="form-control" id="filterDate">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">🔍 Filtrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des transactions -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">📋 Historique des transactions</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Référence</th>
+                            <th>Type</th>
+                            <th>Montant</th>
+                            <th>Frais</th>
+                            <th>Devise</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions.items %}
+                        <tr>
+                            <td><code>{{ tx.reference }}</code></td>
+                            <td><span class="badge bg-info">{{ tx.type }}</span></td>
+                            <td><strong>{{ "%.2f"|format(tx.amount) }}</strong></td>
+                            <td>{{ "%.2f"|format(tx.fee or 0) }}</td>
+                            <td>{{ tx.currency }}</td>
+                            <td>
+                                {% if tx.status == 'completed' %}
+                                    <span class="badge bg-success">✅ Complété</span>
+                                {% elif tx.status == 'pending' %}
+                                    <span class="badge bg-warning">⏳ En attente</span>
+                                {% elif tx.status == 'failed' %}
+                                    <span class="badge bg-danger">❌ Échoué</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ tx.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ tx.created_at.strftime('%d/%m/%Y %H:%M') if tx.created_at else '-' }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewTransaction({{ tx.id }})">
+                                    👁️
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">📭 Aucune transaction trouvée</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    Page {{ transactions.page }} sur {{ transactions.pages }}
+                </div>
+                <div>
+                    {% if transactions.has_prev %}
+                        <a href="{{ url_for('partner_transactions', page=transactions.prev_num) }}" class="btn btn-sm btn-secondary">← Précédent</a>
+                    {% endif %}
+                    {% if transactions.has_next %}
+                        <a href="{{ url_for('partner_transactions', page=transactions.next_num) }}" class="btn btn-sm btn-secondary">Suivant →</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function applyFilters() {
+    const type = document.getElementById('filterType').value;
+    const status = document.getElementById('filterStatus').value;
+    const date = document.getElementById('filterDate').value;
+
+    let url = '/partner/transactions?';
+    if (type) url += 'type=' + type + '&';
+    if (status) url += 'status=' + status + '&';
+    if (date) url += 'date=' + date + '&';
+
+    window.location.href = url;
+}
+
+function viewTransaction(id) {
+    window.location.href = '/partner/transactions/' + id;
+}
+</script>
+{% endblock %}

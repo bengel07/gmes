@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>🔄 Gestion des transactions</h2>
+            <p class="text-muted">Historique complet des transactions</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6>Total transactions</h6>
+                    <h2 id="totalTransactions">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Volume total</h6>
+                    <h2 id="totalVolume">0 HTG</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>En attente</h6>
+                    <h2 id="pendingTransactions">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white shadow">
+                <div class="card-body">
+                    <h6>Frais totaux</h6>
+                    <h2 id="totalFees">0 USD</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔍 Filtres</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <input type="text" class="form-control" id="filterUser" placeholder="Utilisateur">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <select class="form-select" id="filterType">
+                        <option value="">Tous les types</option>
+                        <option value="deposit">Dépôt</option>
+                        <option value="withdrawal">Retrait</option>
+                        <option value="transfer">Transfert</option>
+                        <option value="payment">Paiement</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Tous les statuts</option>
+                        <option value="completed">Complété</option>
+                        <option value="pending">En attente</option>
+                        <option value="failed">Échoué</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="date" class="form-control" id="filterDate">
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">🔍 Filtrer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des transactions -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">📋 Historique des transactions</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Référence</th>
+                            <th>Utilisateur</th>
+                            <th>Type</th>
+                            <th>Montant</th>
+                            <th>Frais</th>
+                            <th>Devise</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody">
+                        {% for tx in transactions %}
+                        <tr>
+                            <td><code>{{ tx.id }}</code></td>
+                            <td>
+                                <strong>{{ tx.user_name }}</strong>
+                            </td>
+                            <td>
+                                {% if tx.type == 'deposit' %}
+                                    <span class="badge bg-success">💰 Dépôt</span>
+                                {% elif tx.type == 'withdrawal' %}
+                                    <span class="badge bg-danger">🏧 Retrait</span>
+                                {% elif tx.type == 'transfer' %}
+                                    <span class="badge bg-info">✈️ Transfert</span>
+                                {% elif tx.type == 'payment' %}
+                                    <span class="badge bg-primary">💳 Paiement</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ tx.type }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ "{:,.2f}".format(tx.amount) }}</strong></td>
+                            <td>{{ "{:,.2f}".format(tx.fee) }} USD</td>
+                            <td>{{ tx.currency }}</td>
+                            <td>
+                                {% if tx.status == 'completed' %}
+                                    <span class="badge bg-success">Complété</span>
+                                {% elif tx.status == 'pending' %}
+                                    <span class="badge bg-warning">En attente</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ tx.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ tx.created_at }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewTransaction('{{ tx.id }}')">
+                                    👁️
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">📭 Aucune transaction trouvée</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails transaction -->
+<div class="modal fade" id="transactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">🔍 Détails de la transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="transactionModalBody">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allTransactions = {{ transactions|tojson }};
+
+function displayTransactions(transactions) {
+    const tbody = document.getElementById('transactionsTableBody');
+
+    if (transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4">📭 Aucune transaction trouvée</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = transactions.map(tx => `
+        <tr>
+            <td><code>${tx.id}</code></td>
+            <td><strong>${tx.user_name}</strong></td>
+            <td>${getTypeBadge(tx.type)}</td>
+            <td><strong>${tx.amount.toLocaleString()}</strong></td>
+            <td>${tx.fee.toLocaleString()} USD</td>
+            <td>${tx.currency}</td>
+            <td>${getStatusBadge(tx.status)}</td>
+            <td><small>${tx.created_at}</small></td>
+            <td><button class="btn btn-sm btn-info" onclick="viewTransaction('${tx.id}')">👁️</button></td>
+        </tr>
+    `).join('');
+}
+
+function getTypeBadge(type) {
+    const badges = {
+        'deposit': '<span class="badge bg-success">💰 Dépôt</span>',
+        'withdrawal': '<span class="badge bg-danger">🏧 Retrait</span>',
+        'transfer': '<span class="badge bg-info">✈️ Transfert</span>',
+        'payment': '<span class="badge bg-primary">💳 Paiement</span>'
+    };
+    return badges[type] || '<span class="badge bg-secondary">' + type + '</span>';
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'completed': '<span class="badge bg-success">Complété</span>',
+        'pending': '<span class="badge bg-warning">En attente</span>',
+        'failed': '<span class="badge bg-danger">Échoué</span>'
+    };
+    return badges[status] || '<span class="badge bg-secondary">' + status + '</span>';
+}
+
+function applyFilters() {
+    const user = document.getElementById('filterUser').value.toLowerCase();
+    const type = document.getElementById('filterType').value;
+    const status = document.getElementById('filterStatus').value;
+    const date = document.getElementById('filterDate').value;
+
+    let filtered = allTransactions;
+
+    if (user) {
+        filtered = filtered.filter(tx => tx.user_name.toLowerCase().includes(user));
+    }
+
+    if (type) {
+        filtered = filtered.filter(tx => tx.type === type);
+    }
+
+    if (status) {
+        filtered = filtered.filter(tx => tx.status === status);
+    }
+
+    if (date) {
+        filtered = filtered.filter(tx => tx.created_at.split(' ')[0] === date);
+    }
+
+    displayTransactions(filtered);
+}
+
+function resetFilters() {
+    document.getElementById('filterUser').value = '';
+    document.getElementById('filterType').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterDate').value = '';
+    displayTransactions(allTransactions);
+}
+
+function viewTransaction(id) {
+    const tx = allTransactions.find(t => t.id === id);
+
+    document.getElementById('transactionModalBody').innerHTML = `
+        <div class="mb-2"><strong>Référence:</strong> ${tx.id}</div>
+        <div class="mb-2"><strong>Utilisateur:</strong> ${tx.user_name}</div>
+        <div class="mb-2"><strong>Type:</strong> ${tx.type}</div>
+        <div class="mb-2"><strong>Montant:</strong> ${tx.amount.toLocaleString()} ${tx.currency}</div>
+        <div class="mb-2"><strong>Frais:</strong> ${tx.fee.toLocaleString()} USD</div>
+        <div class="mb-2"><strong>Statut:</strong> ${tx.status}</div>
+        <div class="mb-2"><strong>Date:</strong> ${tx.created_at}</div>
+    `;
+
+    new bootstrap.Modal(document.getElementById('transactionModal')).show();
+}
+
+function updateStats() {
+    const completed = allTransactions.filter(t => t.status === 'completed');
+    const totalAmount = completed.reduce((sum, t) => sum + t.amount, 0);
+    const totalFees = allTransactions.reduce((sum, t) => sum + t.fee, 0);
+    const pending = allTransactions.filter(t => t.status === 'pending').length;
+
+    document.getElementById('totalTransactions').innerText = allTransactions.length;
+    document.getElementById('totalVolume').innerText = totalAmount.toLocaleString() + ' HTG';
+    document.getElementById('pendingTransactions').innerText = pending;
+    document.getElementById('totalFees').innerText = totalFees.toLocaleString() + ' USD';
+}
+
+updateStats();
+</script>
+{% endblock %}

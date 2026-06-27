@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Transfert - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Transférer de l'argent</h2>
+
+    <div class="row">
+        <div class="col-md-6 mx-auto">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form id="transferForm">
+                        <div class="mb-3">
+                            <label class="form-label">Email du destinataire</label>
+                            <input type="email" class="form-control" id="recipientEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Montant</label>
+                            <input type="number" class="form-control" id="transferAmount" step="0.01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Devise</label>
+                            <select class="form-select" id="transferCurrency">
+                                <option value="HTG">HTG - Gourdes</option>
+                                <option value="USD">USD - Dollars</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description (optionnel)</label>
+                            <input type="text" class="form-control" id="transferDescription">
+                        </div>
+                        <div id="feeInfo" class="alert alert-info small">
+                            Frais: 1% du montant
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-paper-plane me-2"></i>Transférer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+
+document.getElementById('transferForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        recipient_email: document.getElementById('recipientEmail').value,
+        amount: parseFloat(document.getElementById('transferAmount').value),
+        currency: document.getElementById('transferCurrency').value,
+        description: document.getElementById('transferDescription').value
+    };
+
+    try {
+        const response = await fetch('/api/transfer/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`Transfert réussi ! Réf: ${result.reference}`);
+            window.location.href = '/dashboard';
+        } else {
+            alert(result.error || 'Erreur');
+        }
+    } catch (error) {
+        alert('Erreur réseau');
+    }
+});
+</script>
+{% endblock %}

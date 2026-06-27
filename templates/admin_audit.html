@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>📝 Journal d'audit</h2>
+            <p class="text-muted">Historique des actions des utilisateurs sur la plateforme</p>
+        </div>
+        <div>
+            <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+                ← Retour
+            </button>
+            <button onclick="exportAuditLogs()" class="btn btn-success">
+                📥 Exporter CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">🔍 Filtres</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-2">
+                    <input type="text" class="form-control" id="filterUser" placeholder="Utilisateur ID ou email">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="text" class="form-control" id="filterAction" placeholder="Action">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <input type="date" class="form-control" id="filterDate">
+                </div>
+                <div class="col-md-3 mb-2">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        🔍 Appliquer les filtres
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau des logs -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">📋 Historique complet</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Utilisateur</th>
+                            <th>Action</th>
+                            <th>Adresse IP</th>
+                            <th>User Agent</th>
+                            <th>Date</th>
+                            <th>Page</th>
+                            <th>Méthode</th>
+                            <th>Session</th>
+                            <th>Statut</th>
+                            <th>Erreur</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody">
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.id }}</td>
+                            <td>
+                                {% if log.user_id %}
+                                <strong>ID: {{ log.user_id }}</strong>
+                                {% else %}
+                                <span class="text-muted">Système</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ log.action }}</span>
+                            </td>
+                            <td><code>{{ log.ip_address or '-' }}</code></td>
+                            <td><small>{{ log.user_agent[:50] }}{% if log.user_agent|length > 50 %}...{% endif %}</small></td>
+                            <td><small>{{ log.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</small></td>
+
+                            <td>{{ log.page_url or '-' }}</td>
+                            <td>{{ log.request_method or '-' }}</td>
+                            <td>{{ log.session_id or '-' }}</td>
+                            <td>{{ log.response_status or '-' }}</td>
+                            <td>{{ log.error_message or '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                📭 Aucun log d'audit trouvé
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allLogs = [
+    {% for log in logs %}
+    {
+        id: {{ log.id }},
+        user_id: {{ log.user_id if log.user_id else 'null' }},
+        action: "{{ log.action|escape }}",
+        ip_address: "{{ log.ip_address or ''|escape }}",
+        user_agent: "{{ (log.user_agent or '')|escape }}",
+        created_at: "{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '' }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+function displayLogs(logs) {
+    const tbody = document.getElementById('auditTableBody');
+
+    if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">📭 Aucun log trouvé</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = logs.map(log => `
+        <tr>
+            <td>${log.id}</td>
+            <td>
+                ${log.user_id ? `<strong>ID: ${log.user_id}</strong>` : '<span class="text-muted">Système</span>'}
+            </td>
+            <td><span class="badge bg-info">${log.action}</span></td>
+            <td><code>${log.ip_address || '-'}</code></td>
+            <td><small>${log.user_agent ? (log.user_agent.substring(0, 50) + (log.user_agent.length > 50 ? '...' : '')) : '-'}</small></td>
+            <td><small>${new Date(log.created_at).toLocaleString('fr-FR')}</small></td>
+        </tr>
+    `).join('');
+}
+
+function applyFilters() {
+    const userId = document.getElementById('filterUser').value.toLowerCase();
+    const action = document.getElementById('filterAction').value.toLowerCase();
+    const date = document.getElementById('filterDate').value;
+
+    let filtered = allLogs;
+
+    if (userId) {
+        filtered = filtered.filter(log =>
+            log.user_id && log.user_id.toString().includes(userId)
+        );
+    }
+
+    if (action) {
+        filtered = filtered.filter(log =>
+            log.action.toLowerCase().includes(action)
+        );
+    }
+
+    if (date) {
+        filtered = filtered.filter(log =>
+            log.created_at.split('T')[0] === date
+        );
+    }
+
+    displayLogs(filtered);
+}
+
+function exportAuditLogs() {
+    window.location.href = '/api/admin/audit/export';
+}
+
+function resetFilters() {
+    document.getElementById('filterUser').value = '';
+    document.getElementById('filterAction').value = '';
+    document.getElementById('filterDate').value = '';
+    displayLogs(allLogs);
+}
+</script>
+{% endblock %}

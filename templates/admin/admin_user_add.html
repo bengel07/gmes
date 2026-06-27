@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Ajouter un utilisateur - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">➕ Ajouter un utilisateur</h5>
+                </div>
+                <div class="card-body">
+                    <form id="addUserForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Prénom</label>
+                                <input type="text" class="form-control" id="first_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nom</label>
+                                <input type="text"class="form-control" id="last_name" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Téléphone</label>
+                            <input type="tel" class="form-control" id="phone" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Mot de passe</label>
+                            <input type="password" class="form-control" id="password" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_admin">
+                                <label class="form-check-label">Administrateur</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_agent">
+                                <label class="form-check-label">Agent</label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                ➕ Créer l'utilisateur
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="window.location.href='/admin/dashboard'">
+                                Annuler
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        first_name: document.getElementById('first_name').value,
+        last_name: document.getElementById('last_name').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        password: document.getElementById('password').value,
+        is_admin: document.getElementById('is_admin').checked,
+        is_agent: document.getElementById('is_agent').checked
+    };
+
+    const response = await fetch('/api/admin/users/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        alert('Utilisateur créé avec succès !');
+        window.location.href = '/admin/dashboard';
+    } else {
+        alert('Erreur: ' + result.message);
+    }
+});
+</script>
+{% endblock %}

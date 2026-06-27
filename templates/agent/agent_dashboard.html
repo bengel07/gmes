@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Agent - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card bg-warning text-dark mb-4">
+                <div class="card-body">
+                    <h3>
+                        <i class="fas fa-user-tie me-2"></i>
+                        Bonjour, <span id="agentName"></span>
+                    </h3>
+                    <p>Code agent: <strong id="agentCodeDisplay"></strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Mes commissions</h5>
+                </div>
+                <div class="card-body text-center">
+                    <h2 class="display-4" id="agentBalance">0</h2>
+                    <p>HTG</p>
+                    <button class="btn btn-outline-success" onclick="requestWithdrawal()">
+                        <i class="fas fa-arrow-down me-2"></i>Retirer mes commissions
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Confirmer un dépôt</h5>
+                </div>
+                <div class="card-body">
+                    <form id="confirmDepositForm">
+                        <div class="mb-3">
+                            <label class="form-label">Référence du dépôt</label>
+                            <input type="text" class="form-control" id="depositRef"
+                                   placeholder="CASH-XXXXXXXX" required>
+                            <small class="text-muted">La référence donnée par l'utilisateur</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-check-circle me-2"></i>Confirmer le dépôt
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Historique des confirmations</h5>
+                </div>
+                <div class="card-body">
+                    <div id="historyList">Chargement...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+// Vérifier que c'est bien un agent
+if (!user.is_agent) {
+    window.location.href = '/';
+}
+
+document.getElementById('agentName').innerText = `${user.first_name} ${user.last_name}`;
+document.getElementById('agentCodeDisplay').innerText = user.agent_code;
+document.getElementById('agentBalance').innerText = parseFloat(user.agent_balance || 0).toLocaleString();
+
+// Confirmer un dépôt
+document.getElementById('confirmDepositForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const reference = document.getElementById('depositRef').value;
+
+    if (!reference) {
+        alert('Veuillez entrer une référence');
+        return;
+    }
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/deposit/cash/confirm', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ reference })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(`✅ Dépôt confirmé! ${data.amount} HTG crédité à l'utilisateur`);
+            document.getElementById('depositRef').value = '';
+            location.reload();
+        } else {
+            alert(`❌ Erreur: ${data.error || 'Dépôt non trouvé'}`);
+        }
+    } catch (error) {
+        alert('Erreur réseau');
+    }
+});
+
+function requestWithdrawal() {
+    alert('Fonctionnalité de retrait des commissions à venir');
+}
+</script>
+{% endblock %}

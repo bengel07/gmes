@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des dépôts - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>💰 Gestion des dépôts</h2>
+            <p class="text-muted">Approuver ou refuser les demandes de dépôt</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour au tableau de bord
+        </button>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark shadow">
+                <div class="card-body">
+                    <h6>En attente</h6>
+                    <h2>{{ pending_deposits|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white shadow">
+                <div class="card-body">
+                    <h6>Approuvés</h6>
+                    <h2 id="approvedCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white shadow">
+                <div class="card-body">
+                    <h6>Rejetés</h6>
+                    <h2 id="rejectedCount">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white shadow">
+                <div class="card-body">
+                    <h6>Montant total</h6>
+                    <h2 id="totalAmount">0 HTG</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onglets -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <button class="nav-link active" onclick="showTab('pending')">⏳ En attente</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="showTab('all')">📋 Tous les dépôts</button>
+        </li>
+    </ul>
+
+    <!-- Dépôts en attente -->
+    <div id="pendingTab" class="card shadow">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">⏳ Dépôts en attente ({{ pending_deposits|length }})</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Référence</th>
+                            <th>Utilisateur</th>
+                            <th>Montant</th>
+                            <th>Méthode</th>
+                            <th>Référence externe</th>
+                            <th>Reçu</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in pending_deposits %}
+                        <tr>
+                            <td><code>{{ d.reference }}</code></td>
+                            <td>
+                                <strong>{{ d.user.first_name }} {{ d.user.last_name }}</strong><br>
+                                <small>{{ d.user.email }}</small>
+                            </td>
+                            <td><strong>{{ "{:,.2f}".format(d.amount) }} HTG</strong></td>
+                            <td>{{ d.method }}</td>
+                            <td>{{ d.external_ref or '-' }}</small></td>
+                            <td>
+                                {% if d.receipt_image %}
+                                    <a href="{{ d.receipt_image }}" target="_blank" class="btn btn-sm btn-info">
+                                        📎 Voir
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">Aucun</span>
+                                {% endif %}
+                             </td>
+                            <td><small>{{ d.created_at.strftime('%d/%m/%Y %H:%M') }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="approveDeposit({{ d.id }})">
+                                    ✅ Approuver
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="rejectDeposit({{ d.id }})">
+                                    ❌ Refuser
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="viewDeposit({{ d.id }})">
+                                    👁️
+                                </button>
+                             </td>
+                         </tr>
+                        {% else %}
+                         <tr>
+                            <td colspan="8" class="text-center py-4">
+                                ✅ Aucun dépôt en attente
+                             </td>
+                         </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tous les dépôts -->
+    <div id="allTab" class="card shadow" style="display: none;">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">📋 Tous les dépôts</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                         <tr>
+                            <th>Référence</th>
+                            <th>Utilisateur</th>
+                            <th>Montant</th>
+                            <th>Méthode</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Complété le</th>
+                            <th>Actions</th>
+                         </tr>
+                    </thead>
+                    <tbody id="allDepositsBody">
+                        {% for d in all_deposits %}
+                         <tr>
+                             <td><code>{{ d.reference }}</code></td>
+                             <td>
+                                <strong>{{ d.user.first_name }} {{ d.user.last_name }}</strong><br>
+                                <small>{{ d.user.email }}</small>
+                             </td>
+                             <td><strong>{{ "{:,.2f}".format(d.amount) }} HTG</strong></td>
+                             <td>{{ d.method }}</td>
+                             <td>
+                                {% if d.status == 'completed' %}
+                                    <span class="badge bg-success">Approuvé</span>
+                                {% elif d.status == 'pending' %}
+                                    <span class="badge bg-warning">En attente</span>
+                                {% elif d.status == 'rejected' %}
+                                    <span class="badge bg-danger">Rejeté</span>
+                                {% endif %}
+                             </td>
+                             <td><small>{{ d.created_at.strftime('%d/%m/%Y %H:%M') }}</small></td>
+                             <td><small>{{ d.completed_at.strftime('%d/%m/%Y %H:%M') if d.completed_at else '-' }}</small></td>
+                             <td>
+                                <button class="btn btn-sm btn-info" onclick="viewDeposit({{ d.id }})">
+                                    👁️
+                                </button>
+                             </td>
+                         </tr>
+                        {% else %}
+                         <tr>
+                            <td colspan="8" class="text-center py-4">📭 Aucun dépôt trouvé</td>
+                         </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Détails dépôt -->
+<div class="modal fade" id="depositModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">💰 Détails du dépôt</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="depositModalBody">
+                ...
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let allDeposits = {{ all_deposits|tojson }};
+
+function showTab(tab) {
+    if (tab === 'pending') {
+        document.getElementById('pendingTab').style.display = 'block';
+        document.getElementById('allTab').style.display = 'none';
+    } else {
+        document.getElementById('pendingTab').style.display = 'none';
+        document.getElementById('allTab').style.display = 'block';
+    }
+}
+
+async function approveDeposit(id) {
+    if (confirm('Approuver ce dépôt ? Le montant sera ajouté au portefeuille.')) {
+        const response = await fetch(`/api/admin/deposits/${id}/approve`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Dépôt approuvé');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+async function rejectDeposit(id) {
+    if (confirm('Refuser ce dépôt ?')) {
+        const response = await fetch(`/api/admin/deposits/${id}/reject`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert('Dépôt refusé');
+            location.reload();
+        } else {
+            alert('Erreur: ' + data.message);
+        }
+    }
+}
+
+function viewDeposit(id) {
+    const deposit = allDeposits.find(d => d.id === id);
+
+    document.getElementById('depositModalBody').innerHTML = `
+        <div class="mb-2"><strong>Référence:</strong> ${deposit.reference}</div>
+        <div class="mb-2"><strong>Utilisateur:</strong> ${deposit.user.first_name} ${deposit.user.last_name}</div>
+        <div class="mb-2"><strong>Email:</strong> ${deposit.user.email}</div>
+        <div class="mb-2"><strong>Montant:</strong> ${deposit.amount.toLocaleString()} HTG</div>
+        <div class="mb-2"><strong>Méthode:</strong> ${deposit.method}</div>
+        <div class="mb-2"><strong>Référence externe:</strong> ${deposit.external_ref || '-'}</div>
+        <div class="mb-2"><strong>Statut:</strong> ${deposit.status}</div>
+        <div class="mb-2"><strong>Date:</strong> ${new Date(deposit.created_at).toLocaleString('fr-FR')}</div>
+        ${deposit.completed_at ? `<div class="mb-2"><strong>Traité le:</strong> ${new Date(deposit.completed_at).toLocaleString('fr-FR')}</div>` : ''}
+        ${deposit.receipt_image ? `<div class="mb-2"><strong>Reçu:</strong> <a href="${deposit.receipt_image}" target="_blank">Voir le justificatif</a></div>` : ''}
+    `;
+
+    new bootstrap.Modal(document.getElementById('depositModal')).show();
+}
+
+function updateStats() {
+    const completed = allDeposits.filter(d => d.status === 'completed');
+    const rejected = allDeposits.filter(d => d.status === 'rejected');
+    const total = completed.reduce((sum, d) => sum + d.amount, 0);
+
+    document.getElementById('approvedCount').innerText = completed.length;
+    document.getElementById('rejectedCount').innerText = rejected.length;
+    document.getElementById('totalAmount').innerText = total.toLocaleString() + ' HTG';
+}
+
+updateStats();
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Vérification KYC - GmesPay{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>✅ Vérifications KYC</h2>
+            <p class="text-muted">Gérer les vérifications d'identité des utilisateurs</p>
+        </div>
+        <button onclick="window.location.href='/admin/dashboard'" class="btn btn-secondary">
+            ← Retour au tableau de bord
+        </button>
+    </div>
+
+    <!-- KYC en attente -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0">⏳ KYC en attente ({{ pending_kyc|length }})</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Utilisateur</th>
+                            <th>Type document</th>
+                            <th>Soumis le</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kyc in pending_kyc %}
+                        <tr>
+                            <td>{{ kyc.id }}</td>
+                            <td>
+                                <strong>{{ kyc.user.first_name }} {{ kyc.user.last_name }}</strong><br>
+                                <small class="text-muted">{{ kyc.user.email }}</small>
+                            </td>
+                            <td>{{ kyc.document_type }}</td>
+                            <td>{{ kyc.submitted_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="verifyKYC({{ kyc.id }}, 'approve')">
+                                    ✅ Approuver
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="verifyKYC({{ kyc.id }}, 'reject')">
+                                    ❌ Rejeter
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="viewDocuments({{ kyc.id }})">
+                                    👁️ Voir documents
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                ✅ Aucun KYC en attente
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tous les KYC -->
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">📋 Historique des vérifications</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Utilisateur</th>
+                            <th>Document</th>
+                            <th>Statut</th>
+                            <th>Soumis le</th>
+                            <th>Vérifié le</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kyc in all_kyc %}
+                        <tr>
+                            <td>{{ kyc.user.first_name }} {{ kyc.user.last_name }}</td>
+                            <td>{{ kyc.document_type }}</td>
+                            <td>
+                                {% if kyc.status == 'approved' %}
+                                    <span class="badge bg-success">Approuvé</span>
+                                {% elif kyc.status == 'rejected' %}
+                                    <span class="badge bg-danger">Rejeté</span>
+                                {% else %}
+                                    <span class="badge bg-warning">En attente</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ kyc.submitted_at.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ kyc.reviewed_at.strftime('%d/%m/%Y') if kyc.reviewed_at else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">Aucune vérification KYC</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function verifyKYC(kycId, action) {
+    if (confirm(`Voulez-vous ${action === 'approve' ? 'approuver' : 'rejeter'} ce KYC ?`)) {
+        fetch(`/admin/kyc/${kycId}/${action}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + data.message);
+            }
+        });
+    }
+}
+
+function viewDocuments(kycId) {
+    window.open(`/admin/kyc/documents/${kycId}`, '_blank');
+}
+</script>
+{% endblock %}

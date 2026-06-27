@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+
+            <div class="card">
+                <div class="card-header">Admin Login</div>
+                <div class="card-body">
+
+                    <input id="email" class="form-control mb-2" placeholder="Email">
+                    <input id="password" type="password" class="form-control mb-2" placeholder="Password">
+
+                    <button class="btn btn-primary w-100" onclick="login()">
+                        Login
+                    </button>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+async function login() {
+    const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+        localStorage.setItem('token', data.access_token);
+        window.location.href = "/admin/partners";
+    } else {
+        alert(data.error);
+    }
+}
+</script>
+
+{% endblock %}

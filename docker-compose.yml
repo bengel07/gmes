@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: gmespay
+      POSTGRES_USER: gmespay_user
+      POSTGRES_PASSWORD: gmespay_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gmespay_network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - gmespay_network
+
+  app:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://gmespay_user:gmespay_password@postgres:5432/gmespay
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - .:/app
+      - uploads_data:/app/uploads
+    networks:
+      - gmespay_network
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  gmespay_network:
+    driver: bridge
