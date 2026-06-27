@@ -1497,11 +1497,11 @@ def create_app(config_name='default'):
 
 
 
+app = create_app(os.getenv('FLASK_ENV', 'development'))
+
+
 
 if __name__ == '__main__':
-
-
-    app = create_app(os.getenv('FLASK_ENV', 'development'))
 
     with app.app_context():
         create_admin_if_not_exists()
